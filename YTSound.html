@@ -47,9 +47,10 @@ input{font-family:inherit;outline:none;border:none}
 .btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid var(--danger)}
 .btn-danger-ghost:hover{background:rgba(239,68,68,0.1)}
 
-/* 切换按钮 - 灰黑色背景 + 灰色字体，与履历按钮同风格 */
-.btn-switch{background:#1a1a1a!important;color:#a0a0b8!important;border:1px solid #333!important;font-weight:600!important;letter-spacing:0.3px}
-.btn-switch:hover{background:#2a2a2a!important;color:#c0c0c0!important;border-color:#444!important}
+/* 切换按钮 - 黑色背景+灰色字体，与履历按钮同风格 */
+.btn-switch{background:#000!important;color:#a0a0b8!important;border:1px solid #333!important;font-size:0.78rem!important;font-weight:600!important;padding:5px 12px!important;gap:4px!important;letter-spacing:0.5px}
+.btn-switch:hover{background:#1a1a1a!important;color:#c0c0c0!important;border-color:#444!important}
+.btn-switch i{color:#a0a0b8!important}
 
 /* APP */
 .app{display:flex;height:100vh;padding-top:60px}
@@ -58,6 +59,8 @@ input{font-family:inherit;outline:none;border:none}
 .sidebar-toggle{position:absolute;top:68px;left:390px;z-index:90;width:52px;height:48px;background:#e5e7eb;border:1px solid #cbd5e1;border-left:none;border-radius:0 var(--radius-sm) var(--radius-sm) 0;display:flex;align-items:center;justify-content:center;color:#111827;transition:var(--transition);font-size:0.78rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .sidebar-toggle:hover{color:#000;background:#f8fafc}
 .sidebar.collapsed~.sidebar-toggle{left:0}
+.header-collapse-btn{padding:5px 12px!important;justify-content:center!important;background:#e5e7eb!important;border:1px solid #cbd5e1!important;color:#111827!important;font-size:0.78rem;font-weight:700}
+.header-collapse-btn:hover{background:#f8fafc!important;color:#000!important}
 
 /* SIDEBAR HEADER */
 .sidebar-header{padding:12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
@@ -233,11 +236,12 @@ input{font-family:inherit;outline:none;border:none}
 .controls{display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 0}
 .ctrl-btn{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:1rem;transition:var(--transition)}
 .ctrl-btn:hover{color:var(--text-primary);background:var(--bg-hover)}
-.ctrl-btn.play-main{width:52px;height:52px;background:var(--text-primary);color:var(--bg-primary)}
-.ctrl-btn.play-main:hover{transform:scale(1.08);box-shadow:0 4px 20px rgba(255,255,255,0.2)}
-.ctrl-btn.play-main .pink-icon{color:#ec4899}
-.ctrl-btn.play-main .pink-icon.play-icon{width:22px;height:24px}
-.ctrl-btn.play-main .pink-icon.pause-icon{width:18px;height:22px}
+.ctrl-btn.play-main{width:56px;height:56px;padding:0;overflow:hidden;background:#fff;border:2px solid rgba(236,72,153,.75);box-shadow:0 4px 18px rgba(236,72,153,.28)}
+.ctrl-btn.play-main:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(236,72,153,.42)}
+.ctrl-btn.play-main img{width:100%;height:100%;display:block;object-fit:cover;border-radius:50%}
+.ctrl-btn.track-step{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,rgba(124,58,237,.30),rgba(236,72,153,.30));border:1px solid rgba(236,72,153,.65);color:#f5b6d4;box-shadow:0 3px 12px rgba(124,58,237,.20)}
+.ctrl-btn.track-step:hover{background:linear-gradient(135deg,rgba(124,58,237,.46),rgba(236,72,153,.46));color:#fff;transform:scale(1.06);box-shadow:0 4px 16px rgba(236,72,153,.30)}
+.ctrl-btn.track-step i{font-size:1rem}
 .volume-control{display:flex;align-items:center;gap:5px;margin-left:14px}
 .volume-slider{-webkit-appearance:none;appearance:none;width:80px;height:4px;background:var(--bg-surface);border-radius:2px;outline:none;cursor:pointer}
 .volume-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer}
@@ -323,7 +327,8 @@ input{font-family:inherit;outline:none;border:none}
     .track-title{font-size:1.2rem}
     .controls{gap:10px}
     .ctrl-btn{width:36px;height:36px}
-    .ctrl-btn.play-main{width:44px;height:44px}
+    .ctrl-btn.play-main{width:50px;height:50px}
+    .ctrl-btn.track-step{width:40px;height:40px}
     .sidebar-header{padding-bottom:8px}
     .quick-chips{padding-left:10px;padding-right:10px}
     .search-results-wrapper{height:38vh;max-height:none;min-height:220px}
@@ -333,7 +338,8 @@ input{font-family:inherit;outline:none;border:none}
     .track-title{font-size:1.05rem}
     .controls{gap:8px}
     .ctrl-btn{width:34px;height:34px}
-    .ctrl-btn.play-main{width:42px;height:42px}
+    .ctrl-btn.play-main{width:48px;height:48px}
+    .ctrl-btn.track-step{width:38px;height:38px}
     .thumb{width:90px;min-width:90px;height:55px}
     .sr-thumb{width:80px;min-width:80px;height:50px}
     .header{padding:0 10px}
@@ -367,8 +373,7 @@ input{font-family:inherit;outline:none;border:none}
     </div>
     <div class="header-actions">
         <div class="mode-toggle active" id="audioModeToggle" title="声音模式"><div class="toggle-dot"></div><span>纯音频</span></div>
-        <!-- 切换按钮：改为与履历按钮同风格（灰黑色背景 + 灰色字体） -->
-        <button class="btn btn-switch" id="headerToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏">切换</button>
+        <button class="btn btn-switch" id="headerToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏"><i class="fas fa-chevron-left" id="headerToggleIcon"></i> 切换</button>
         <button class="btn btn-ghost" onclick="openHistory()" title="搜索与播放履历"><i class="fas fa-clock-rotate-left"></i> <span class="btn-label">履历</span></button>
         <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> <span class="btn-label">添加</span></button>
     </div>
@@ -443,11 +448,11 @@ input{font-family:inherit;outline:none;border:none}
                 </div>
             </div>
             <div class="controls">
-                <button class="ctrl-btn" onclick="prevVideo()" title="上一首"><i class="fas fa-step-backward"></i></button>
-                <button class="ctrl-btn play-main" id="mainPlayBtn" onclick="togglePlay()" title="播放/暂停">
-                    <span class="pink-icon play-icon" id="mainPinkIcon"></span>
+                <button class="ctrl-btn track-step" onclick="prevVideo()" title="上一首" aria-label="上一首"><i class="fas fa-step-backward"></i></button>
+                <button class="ctrl-btn play-main" id="mainPlayBtn" onclick="togglePlay()" title="播放/暂停" aria-label="播放/暂停">
+                    <img src="https://www.star-style-studio.net/tools/icon.png" alt="播放/暂停">
                 </button>
-                <button class="ctrl-btn" onclick="nextVideo()" title="下一首"><i class="fas fa-step-forward"></i></button>
+                <button class="ctrl-btn track-step" onclick="nextVideo()" title="下一首" aria-label="下一首"><i class="fas fa-step-forward"></i></button>
                 <div class="volume-control">
                     <i class="fas fa-volume-high" id="volIcon" style="color:var(--text-muted);font-size:0.82rem"></i>
                     <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80" oninput="setVolume(this.value)">
@@ -558,8 +563,6 @@ function updatePinkIcons(playing) {
     const pauseIcon = pauseIconSVG();
     const overlayIcon = document.getElementById('overlayPinkIcon');
     if (overlayIcon) overlayIcon.outerHTML = playing ? pauseIcon : playIcon;
-    const mainIcon = document.getElementById('mainPinkIcon');
-    if (mainIcon) mainIcon.outerHTML = playing ? pauseIcon : playIcon;
     const npBtn = document.getElementById('npPlayBtn');
     if (npBtn) npBtn.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
 }
@@ -581,15 +584,13 @@ function doSearch() {
     rememberSearch(query);
     hideSearchBanner();
     showSearchResultsLoading();
-    performLocalSearch(query);
+    performWorkerSearch(query);
 }
 
-async function performLocalSearch(query) {
+async function performWorkerSearch(query) {
     try {
-        const local = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-        const apiBase = local ? '' : WORKER_API_URL;
-        if (apiBase.includes('REPLACE_WITH_SUBDOMAIN')) throw new Error('Cloudflare Worker地址尚未配置');
-        const resp = await fetch(`${apiBase}/api/search?q=${encodeURIComponent(query)}`, { cache:'no-store' });
+        if (!WORKER_API_URL || WORKER_API_URL.includes('REPLACE_WITH_SUBDOMAIN')) throw new Error('Cloudflare Worker地址尚未配置');
+        const resp = await fetch(`${WORKER_API_URL}/api/search?q=${encodeURIComponent(query)}`, { cache:'no-store' });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
         const results = Array.isArray(data.items) ? data.items : [];
@@ -597,15 +598,10 @@ async function performLocalSearch(query) {
         renderSearchResults(results, query);
         if (!results.length) showToast('YouTube没有返回可显示的视频', 'warning');
     } catch(e) {
-        console.warn('Local search failed:', e);
-        if (apiKey) {
-            showToast('本机搜索失败，正在改用 YouTube API', 'warning');
-            performApiSearch(query);
-        } else {
-            const area = document.getElementById('searchResultsArea');
-            area.innerHTML = `<div class="search-empty"><i class="fas fa-triangle-exclamation"></i>搜索服务器未连接<br><small>${escapeHtml(e.message || '请使用启动器重新打开程序')}</small></div>`;
-            showToast('请用「启动SoundFlow4c.bat」打开程序', 'error');
-        }
+        console.warn('Cloudflare Worker search failed:', e);
+        const area = document.getElementById('searchResultsArea');
+        area.innerHTML = `<div class="search-empty"><i class="fas fa-triangle-exclamation"></i>搜索服务暂时不可用<br><small>${escapeHtml(e.message || 'Cloudflare Worker 请求失败，请稍后重试')}</small></div>`;
+        showToast('Cloudflare Worker 搜索失败，请稍后重试', 'error');
     }
 }
 
