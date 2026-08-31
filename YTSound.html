@@ -44,6 +44,8 @@ input{font-family:inherit;outline:none;border:none}
 .btn-icon{width:34px;height:34px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:0.95rem;color:var(--text-secondary);transition:var(--transition);flex-shrink:0}
 .btn-icon:hover{background:var(--bg-hover);color:var(--text-primary)}
 .btn-sm{padding:4px 9px;font-size:0.76rem}
+.btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+.btn-danger-ghost:hover{background:rgba(239,68,68,0.1)}
 
 /* APP */
 .app{display:flex;height:100vh;padding-top:60px}
@@ -95,18 +97,22 @@ input{font-family:inherit;outline:none;border:none}
 .scroll-hint i{font-size:0.8rem;animation:scrollHint 1.5s ease-in-out infinite}
 @keyframes scrollHint{0%,100%{transform:translateY(0);opacity:0.5}50%{transform:translateY(3px);opacity:1}}
 
-/* SEARCH RESULTS - 带滚动条的可滑动区域 */
-.search-results-wrapper{flex:0 0 auto;max-height:304px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;background:#6f747d;border-top:1px solid #858b95;border-bottom:1px solid #858b95;transition:height .25s ease,max-height .25s ease,min-height .25s ease,opacity .25s ease}.search-results-wrapper.search-collapsed{height:0!important;min-height:0!important;max-height:0!important;flex-basis:0!important;overflow:hidden;border:0;opacity:0}
+/* SEARCH RESULTS */
+.search-results-wrapper{flex:0 0 auto;max-height:304px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;background:#6f747d;border-top:1px solid #858b95;border-bottom:1px solid #858b95;transition:height .25s ease,max-height .25s ease,min-height .25s ease,opacity .25s ease}
+.search-results-wrapper.search-collapsed{height:0!important;min-height:0!important;max-height:0!important;flex-basis:0!important;overflow:hidden;border:0;opacity:0}
 .search-results-wrapper::-webkit-scrollbar{width:4px}
 .search-results-wrapper::-webkit-scrollbar-track{background:transparent}
 .search-results-wrapper::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .search-results-wrapper::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
-/* Firefox */
 .search-results-wrapper{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
 
-.search-results-header{padding:7px 10px;font-size:0.76rem;color:#1f2937;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;position:sticky;top:0;background:#858b95;z-index:2;border-bottom:1px solid #aeb4bd;margin-bottom:0}.search-results-header .results-label{justify-self:start;white-space:nowrap}.search-results-header .results-actions{justify-self:end}.results-collapse-btn,.add-all-btn{padding:3px 7px;border-radius:5px;background:#d1d5db;border:1px solid #b8bec7;color:#111827;font-size:.7rem;white-space:nowrap}.results-collapse-btn{width:30px;height:24px;padding:0}.results-collapse-btn:hover,.add-all-btn:hover{background:#e5e7eb}
+.search-results-header{padding:7px 10px;font-size:0.76rem;color:#1f2937;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;position:sticky;top:0;background:#858b95;z-index:2;border-bottom:1px solid #aeb4bd;margin-bottom:0}
+.search-results-header .results-label{justify-self:start;white-space:nowrap}.search-results-header .results-actions{justify-self:end}
+.results-collapse-btn,.add-all-btn{padding:3px 7px;border-radius:5px;background:#d1d5db;border:1px solid #b8bec7;color:#111827;font-size:.7rem;white-space:nowrap}
+.results-collapse-btn{width:30px;height:24px;padding:0}
+.results-collapse-btn:hover,.add-all-btn:hover{background:#e5e7eb}
 .search-results-header .count{color:#5b21b6;font-weight:800}
-.search-result-card{display:flex;gap:8px;padding:8px 14px;cursor:pointer;transition:var(--transition);border-bottom:1px solid #858b95;margin:0;background:#737983;color:#111827;opacity:1;filter:none}
+.search-result-card{display:flex;gap:8px;padding:8px 14px;cursor:pointer;transition:var(--transition);border-bottom:1px solid #858b95;margin:0;background:#737983;color:#111827}
 .search-result-card:hover{background:#858b95}
 .search-result-card.in-playlist{background:#7c8190;box-shadow:inset 3px 0 0 var(--accent-1)}
 .search-result-card.in-playlist:hover{background:#e8e3f7}
@@ -157,20 +163,9 @@ input{font-family:inherit;outline:none;border:none}
 
 /* PLAYER AREA */
 .player-area{flex:1;display:flex;flex-direction:column;position:relative;background:var(--bg-primary);overflow:hidden}
-
-/* YOUTUBE PLAYER - 确保在视口内且能正常播放 */
 .youtube-player-wrap{
-    position:absolute;
-    width:200px;
-    height:200px;
-    /* 保留在视口内，避免浏览器停止渲染屏幕外播放器 */
-    bottom:54px;
-    right:0;
-    z-index:1;
-    opacity:0.001;
-    clip-path:inset(49%);
-    pointer-events:none;
-    overflow:hidden;
+    position:absolute;width:200px;height:200px;bottom:54px;right:0;z-index:1;
+    opacity:0.001;clip-path:inset(49%);pointer-events:none;overflow:hidden;
 }
 .youtube-player-wrap iframe{width:100%;height:100%;border:none}
 
@@ -259,7 +254,7 @@ input{font-family:inherit;outline:none;border:none}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.show{display:flex}
-.modal{background:var(--bg-surface);border-radius:var(--radius);padding:22px;width:100%;max-width:440px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.modal{background:var(--bg-surface);border-radius:var(--radius);padding:22px;width:100%;max-width:460px;box-shadow:var(--shadow);border:1px solid var(--border)}
 .modal h3{font-size:1.1rem;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
 .modal-close{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:var(--transition)}
 .modal-close:hover{background:var(--bg-hover);color:var(--text-primary)}
@@ -267,15 +262,19 @@ input{font-family:inherit;outline:none;border:none}
 .modal-input:focus{border-color:var(--accent-1)}
 .modal-input::placeholder{color:var(--text-muted)}
 .modal-hint{font-size:0.76rem;color:var(--text-muted);margin-bottom:12px}
-.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;flex-wrap:wrap}
 .history-tabs{display:flex;gap:6px;margin-bottom:12px}
-.history-tab{flex:1;padding:8px;border-radius:7px;background:var(--bg-primary);color:var(--text-secondary);border:1px solid var(--border)}
+.history-tab{flex:1;padding:8px;border-radius:7px;background:var(--bg-primary);color:var(--text-secondary);border:1px solid var(--border);font-size:0.78rem;transition:var(--transition)}
 .history-tab.active{color:#fff;border-color:var(--accent-1);background:rgba(124,58,237,.18)}
+.history-tab:hover{border-color:var(--accent-1)}
 .history-list{max-height:360px;overflow:auto;display:flex;flex-direction:column;gap:6px}
 .history-item{display:flex;align-items:center;gap:9px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:7px}
 .history-item img{width:64px;height:38px;object-fit:cover;border-radius:4px}
 .history-main{flex:1;min-width:0}.history-title{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.history-meta{font-size:.68rem;color:var(--text-muted)}
 .history-empty{padding:28px;text-align:center;color:var(--text-muted);font-size:.82rem}
+.history-count{font-size:.72rem;color:var(--text-muted);padding:0 4px 8px;display:flex;justify-content:space-between}
+.history-count .clear-link{color:var(--danger);cursor:pointer;font-weight:600}
+.history-count .clear-link:hover{text-decoration:underline}
 
 /* TOAST */
 .toast-container{position:fixed;top:72px;right:14px;z-index:300;display:flex;flex-direction:column;gap:5px;max-width:300px}
@@ -334,6 +333,8 @@ input{font-family:inherit;outline:none;border:none}
     .search-result-card{padding:7px 10px}
     .sr-title{font-size:.78rem}
     .header-actions{gap:4px}
+    .history-tabs{gap:4px}
+    .history-tab{padding:6px 4px;font-size:.72rem}
 }
 </style>
 </head>
@@ -352,7 +353,7 @@ input{font-family:inherit;outline:none;border:none}
         </div>
     </div>
     <div class="header-actions">
-        <div class="mode-toggle active" id="audioModeToggle" title="音频优先模式 (M)"><div class="toggle-dot"></div><span>纯音频</span></div>
+        <div class="mode-toggle active" id="audioModeToggle" title="声音模式"><div class="toggle-dot"></div><span>纯音频</span></div>
         <button class="btn header-collapse-btn" id="headerToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏"><i class="fas fa-chevron-left" id="headerToggleIcon"></i></button>
         <button class="btn btn-ghost" onclick="openHistory()" title="搜索与播放履历"><i class="fas fa-clock-rotate-left"></i> <span class="btn-label">履历</span></button>
         <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> <span class="btn-label">添加</span></button>
@@ -361,7 +362,6 @@ input{font-family:inherit;outline:none;border:none}
 
 <!-- APP -->
 <div class="app">
-    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="search-box" id="searchBox">
@@ -371,8 +371,6 @@ input{font-family:inherit;outline:none;border:none}
             </div>
             <div class="quick-chips" id="quickChips" aria-label="近期搜索词，可左右滑动"></div>
         </div>
-
-        <!-- SEARCH BANNER: YouTube 结果链接 -->
         <div class="search-banner hidden" id="searchBanner">
             <div class="search-banner-top"><i class="fab fa-youtube"></i><span>YouTube 搜索结果</span></div>
             <div class="search-banner-query" id="bannerQuery">关键词</div>
@@ -382,26 +380,16 @@ input{font-family:inherit;outline:none;border:none}
             </a>
             <div class="search-banner-footer"><small>将跳转至 YouTube 官网搜索页面</small><a onclick="copySearchUrl()">📋 复制链接</a></div>
         </div>
-
-        <!-- SEARCH RESULTS - 带滚动条的滑动区域 -->
         <div class="scroll-hint" id="scrollHint"><i class="fas fa-chevron-up"></i> 向上滑动查看更多结果 <i class="fas fa-chevron-up"></i></div>
         <div class="search-results-wrapper" id="searchResultsWrapper">
             <div id="searchResultsArea"></div>
         </div>
-
-        <!-- VIDEO LIST -->
         <div class="video-list" id="videoList"></div>
     </aside>
     <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏"><i class="fas fa-chevron-left" id="toggleIcon"></i></button>
 
-    <!-- PLAYER AREA -->
     <main class="player-area">
-        <!-- 隐藏的 YouTube 播放器 - 确保在视口内 -->
-        <div class="youtube-player-wrap">
-            <div id="youtube-player"></div>
-        </div>
-
-        <!-- WELCOME -->
+        <div class="youtube-player-wrap"><div id="youtube-player"></div></div>
         <div class="welcome" id="welcomeScreen">
             <div class="welcome-icon"><i class="fas fa-headphones"></i></div>
             <h2>SoundFlow</h2>
@@ -416,8 +404,6 @@ input{font-family:inherit;outline:none;border:none}
                 <div class="data-badge tip"><i class="fas fa-bolt"></i> 请求最低画质以减少流量</div>
             </div>
         </div>
-
-        <!-- PLAYER SCREEN -->
         <div class="player-screen hidden" id="playerScreen">
             <div class="album-art" id="albumArt">
                 <img id="albumArtImg" src="" alt="">
@@ -450,8 +436,6 @@ input{font-family:inherit;outline:none;border:none}
                 <button class="playback-speed" id="speedBtn" onclick="cycleSpeed()">1.00x</button>
             </div>
         </div>
-
-        <!-- NOW PLAYING BAR -->
         <div class="now-playing" id="nowPlayingBar">
             <div class="np-thumb"><img id="npThumb" src="" alt=""></div>
             <div class="np-info"><div class="np-title" id="npTitle">视频标题</div><div class="np-channel" id="npChannel">频道名称</div></div>
@@ -475,11 +459,15 @@ input{font-family:inherit;outline:none;border:none}
     <div class="modal">
         <h3>履历<button class="modal-close" onclick="closeHistory()"><i class="fas fa-times"></i></button></h3>
         <div class="history-tabs">
-            <button class="history-tab active" id="searchHistoryTab" onclick="renderHistory('search')">搜索履历</button>
-            <button class="history-tab" id="playHistoryTab" onclick="renderHistory('play')">播放履历</button>
+            <button class="history-tab active" id="searchHistoryTab" onclick="renderHistory('search')">🔍 搜索履历</button>
+            <button class="history-tab" id="playHistoryTab" onclick="renderHistory('play')">▶️ 播放履历</button>
+            <button class="history-tab" id="playlistHistoryTab" onclick="renderHistory('playlist')">📋 播放列表</button>
         </div>
+        <div class="history-count" id="historyCount"></div>
         <div class="history-list" id="historyList"></div>
-        <div class="modal-actions"><button class="btn btn-ghost" onclick="clearCurrentHistory()"><i class="fas fa-trash"></i> 清空当前履历</button></div>
+        <div class="modal-actions" id="historyActions">
+            <button class="btn btn-danger-ghost" id="clearHistoryBtn" onclick="clearCurrentHistory()"><i class="fas fa-trash"></i> <span id="clearHistoryText">清空当前履历</span></button>
+        </div>
     </div>
 </div>
 
@@ -568,17 +556,13 @@ const demoDatabase = [
     { id:'RgKAFK5djSk', title:'Charlie Puth - See You Again', channel:'WizKhalifaVEVO', views:'6.1B', duration:'3:52', thumb:'https://img.youtube.com/vi/RgKAFK5djSk/hqdefault.jpg' },
 ];
 
-// ===================== SEARCH (支持任何语言) =====================
+// ===================== SEARCH =====================
 function onSearchInput(value) {
     currentSearchQuery = value;
     const clearBtn = document.getElementById('clearBtn');
     clearBtn.style.display = value ? 'flex' : 'none';
     clearTimeout(searchDebounceTimer);
-    if (!value || value.trim().length === 0) {
-        hideSearchBanner();
-        hideSearchResults();
-        return;
-    }
+    if (!value || value.trim().length === 0) { hideSearchBanner(); hideSearchResults(); return; }
     searchDebounceTimer = setTimeout(() => doSearch(), 300);
 }
 
@@ -592,7 +576,6 @@ function doSearch() {
     performLocalSearch(query);
 }
 
-// 通过同文件夹中的本机服务器读取 YouTube 搜索页，避免浏览器跨域限制
 async function performLocalSearch(query) {
     try {
         const local = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
@@ -618,7 +601,6 @@ async function performLocalSearch(query) {
     }
 }
 
-// 构建 YouTube 搜索 URL（使用 encodeURIComponent 确保任何语言都能正确编码）
 function getYouTubeSearchUrl(query) {
     const encodedQuery = encodeURIComponent(query);
     return `https://www.youtube.com/results?search_query=${encodedQuery}`;
@@ -662,11 +644,8 @@ async function performApiSearch(query) {
         if (!resp.ok) throw new Error('API error');
         const data = await resp.json();
         const results = (data.items || []).map(item => ({
-            id: item.id.videoId,
-            title: item.snippet.title,
-            channel: item.snippet.channelTitle,
-            views: '',
-            duration: parseDuration(item.contentDetails?.duration),
+            id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle,
+            views: '', duration: parseDuration(item.contentDetails?.duration),
             thumb: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || ''
         }));
         if (results.length > 0) { searchResults = results; renderSearchResults(results, currentSearchQuery); return; }
@@ -684,18 +663,7 @@ function parseDuration(iso) {
     return (h ? h + ':' : '') + mi.toString().padStart(2,'0') + ':' + s.toString().padStart(2,'0');
 }
 
-function performDemoSearch(query) {
-    const q = query.toLowerCase();
-    const results = demoDatabase.filter(v =>
-        v.title.toLowerCase().includes(q) ||
-        v.channel.toLowerCase().includes(q) ||
-        v.id.toLowerCase().includes(q)
-    ).slice(0, 10);
-    searchResults = results;
-    renderSearchResults(results, currentSearchQuery);
-}
-
-// ===================== SEARCH RESULTS WITH SCROLL =====================
+// ===================== SEARCH RESULTS =====================
 function showSearchResultsLoading() {
     const area = document.getElementById('searchResultsArea');
     const wrapper = document.getElementById('searchResultsWrapper');
@@ -719,14 +687,9 @@ function showSearchResultsEmpty(query) {
 function updateScrollHint() {
     const wrapper = document.getElementById('searchResultsWrapper');
     const hint = document.getElementById('scrollHint');
-    // 在滚动事件后更新提示显示
     setTimeout(() => {
-        if (wrapper.scrollHeight > wrapper.clientHeight) {
-            hint.classList.add('visible');
-        } else {
-            hint.classList.remove('visible');
-        }
-        // 监听滚动隐藏提示
+        if (wrapper.scrollHeight > wrapper.clientHeight) hint.classList.add('visible');
+        else hint.classList.remove('visible');
         wrapper.onscroll = () => {
             if (wrapper.scrollTop > 10) hint.classList.remove('visible');
             else hint.classList.add('visible');
@@ -737,22 +700,19 @@ function updateScrollHint() {
 function renderSearchResults(results, query) {
     const area = document.getElementById('searchResultsArea');
     if (!results || results.length === 0) { showSearchResultsEmpty(query); updateScrollHint(); return; }
-
-    let html = `<div class="search-results-header"><span class="results-label">找到 <span class="count">${results.length}</span> 个搜索结果</span><button class="results-collapse-btn" id="resultsCollapseBtn" onclick="toggleSearchResults()" title="收起搜索结果"><i class="fas fa-chevron-up"></i></button><div class="results-actions"><button class="add-all-btn" onclick="addAllSearchResults()">全部添加</button></div></div>`;
+    let html = `<div class="search-results-header">
+        <span class="results-label">找到 <span class="count">${results.length}</span> 个搜索结果</span>
+        <button class="results-collapse-btn" id="resultsCollapseBtn" onclick="toggleSearchResults()" title="收起搜索结果"><i class="fas fa-chevron-up"></i></button>
+        <div class="results-actions"><button class="add-all-btn" onclick="addAllSearchResults()">全部添加</button></div>
+    </div>`;
     results.forEach((video, idx) => {
         const thumbSrc = video.thumb || `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`;
         const inPlaylist = videoList.some(v => v.id === video.id);
         html += `
         <div class="search-result-card${inPlaylist ? ' in-playlist' : ''}" data-video-id="${escapeHtml(video.id)}" onclick="playVideoFromSearch(${idx})">
-            <div class="sr-thumb">
-                <img src="${thumbSrc}" alt="${escapeHtml(video.title)}" loading="lazy"
-                    onerror="this.style.display='none'">
-                ${video.duration ? `<span class="sr-duration">${video.duration}</span>` : ''}
-            </div>
-            <div class="sr-info">
-                <div class="sr-title">${highlightMatch(video.title, query)}</div>
-                <div class="sr-channel">${escapeHtml(video.channel)}</div>
-            </div>
+            <div class="sr-thumb"><img src="${thumbSrc}" alt="${escapeHtml(video.title)}" loading="lazy" onerror="this.style.display='none'">
+            ${video.duration ? `<span class="sr-duration">${video.duration}</span>` : ''}</div>
+            <div class="sr-info"><div class="sr-title">${highlightMatch(video.title, query)}</div><div class="sr-channel">${escapeHtml(video.channel)}</div></div>
             <div class="sr-add-btn" onclick="event.stopPropagation();addSearchResult(${idx})" title="${inPlaylist ? '已在播放列表' : '添加到播放列表'}"><i class="fas ${inPlaylist ? 'fa-check' : 'fa-plus'}"></i></div>
         </div>`;
     });
@@ -762,7 +722,6 @@ function renderSearchResults(results, query) {
     if (searchCollapseTimer) clearTimeout(searchCollapseTimer);
     searchCollapseTimer = setTimeout(() => setSearchResultsCollapsed(true), 30000);
     updateScrollHint();
-    // 重新绑定滚动事件
     bindScrollHint();
 }
 
@@ -776,12 +735,7 @@ function highlightMatch(text, query) {
     return `${escapeHtml(before)}<mark style="background:var(--accent-1);color:#fff;padding:0 2px;border-radius:2px">${escapeHtml(match)}</mark>${escapeHtml(after)}`;
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
+function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 
 function setSearchResultsCollapsed(collapsed) {
     searchResultsCollapsed = collapsed;
@@ -790,10 +744,7 @@ function setSearchResultsCollapsed(collapsed) {
     const hint = document.getElementById('scrollHint');
     if (w) w.classList.toggle('search-collapsed', collapsed);
     if (hint) hint.classList.remove('visible');
-    if (b) {
-        b.innerHTML = '<i class="fas '+(collapsed?'fa-chevron-down':'fa-chevron-up')+'"></i>';
-        b.title = collapsed ? '展开搜索结果' : '收起搜索结果';
-    }
+    if (b) { b.innerHTML = '<i class="fas '+(collapsed?'fa-chevron-down':'fa-chevron-up')+'"></i>'; b.title = collapsed ? '展开搜索结果' : '收起搜索结果'; }
     if (!collapsed) updateScrollHint();
 }
 function toggleSearchResults(){setSearchResultsCollapsed(!searchResultsCollapsed);}
@@ -807,73 +758,42 @@ function bindScrollHint() {
     };
 }
 
-function playVideoFromSearch(idx) {
-    if (idx >= 0 && idx < searchResults.length) {
-        const video = searchResults[idx];
-        addVideoById(video.id, video.title, video.channel, video.duration);
-    }
-}
+function playVideoFromSearch(idx) { if (idx >= 0 && idx < searchResults.length) { const video = searchResults[idx]; addVideoById(video.id, video.title, video.channel, video.duration); } }
 
 function refreshSearchResultStates() {
     document.querySelectorAll('.search-result-card[data-video-id]').forEach(card => {
         const inPlaylist = videoList.some(v => v.id === card.dataset.videoId);
         card.classList.toggle('in-playlist', inPlaylist);
         const button = card.querySelector('.sr-add-btn');
-        if (button) {
-            button.title = inPlaylist ? '已在播放列表' : '添加到播放列表';
-            button.innerHTML = `<i class="fas ${inPlaylist ? 'fa-check' : 'fa-plus'}"></i>`;
-        }
+        if (button) { button.title = inPlaylist ? '已在播放列表' : '添加到播放列表'; button.innerHTML = `<i class="fas ${inPlaylist ? 'fa-check' : 'fa-plus'}"></i>`; }
     });
 }
 
 function addSearchResult(idx) {
-    if (idx >= 0 && idx < searchResults.length) {
-        const video = searchResults[idx];
-        addVideoById(video.id, video.title, video.channel, video.duration);
-    }
+    if (idx >= 0 && idx < searchResults.length) { const video = searchResults[idx]; addVideoById(video.id, video.title, video.channel, video.duration); }
 }
 
 function addAllSearchResults() {
     let added = 0;
     searchResults.forEach(video => {
-        if (!videoList.find(v => v.id === video.id)) {
-            videoList.push({ id: video.id, title: video.title, channel: video.channel, views: video.views || '', duration: video.duration || '...' });
-            added++;
-        }
+        if (!videoList.find(v => v.id === video.id)) { videoList.push({ id: video.id, title: video.title, channel: video.channel, views: video.views || '', duration: video.duration || '...' }); added++; }
     });
-    renderVideoList();
-    refreshSearchResultStates();
+    renderVideoList(); refreshSearchResultStates();
     showToast(`已添加 ${added} 个视频到列表`, 'success');
     saveToStorage();
 }
 
 // ===================== QUICK SEARCH =====================
-function quickSearch(term) {
-    document.getElementById('searchInput').value = term;
-    currentSearchQuery = term;
-    doSearch();
-    showToast(`正在搜索：${term}`, 'info');
-}
-
-function clearSearch() {
-    document.getElementById('searchInput').value = '';
-    currentSearchQuery = '';
-    searchResults = [];
-    hideSearchBanner();
-    hideSearchResults();
-    document.getElementById('clearBtn').style.display = 'none';
-}
+function quickSearch(term) { document.getElementById('searchInput').value = term; currentSearchQuery = term; doSearch(); showToast(`正在搜索：${term}`, 'info'); }
+function clearSearch() { document.getElementById('searchInput').value = ''; currentSearchQuery = ''; searchResults = []; hideSearchBanner(); hideSearchResults(); document.getElementById('clearBtn').style.display = 'none'; }
 
 // ===================== ADD VIDEO =====================
 async function addVideoById(id, title, channel, duration) {
     if (videoList.find(v => v.id === id)) { showToast('该视频已在列表中', 'warning'); return; }
     const video = { id, title: title || '加载中...', channel: channel || '加载中...', views: '', duration: duration || '...' };
     videoList.push(video);
-    renderVideoList();
-    refreshSearchResultStates();
+    renderVideoList(); refreshSearchResultStates();
     showToast('正在获取视频信息...', 'info');
-
-    // oEmbed 获取标题和频道（无需 API Key）
     try {
         const resp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`);
         if (resp.ok) {
@@ -883,8 +803,6 @@ async function addVideoById(id, title, channel, duration) {
             renderVideoList();
         }
     } catch(e) {}
-
-    // YouTube Data API 获取时长和播放量
     if (apiKey) {
         try {
             const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${id}&key=${apiKey}`;
@@ -892,19 +810,10 @@ async function addVideoById(id, title, channel, duration) {
             if (resp.ok) {
                 const data = await resp.json();
                 if (data.items && data.items.length > 0) {
-                    const item = data.items[0];
                     let dur = '...';
-                    const rawDur = item.contentDetails?.duration;
-                    if (rawDur) {
-                        const m = rawDur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-                        if (m) {
-                            const h = m[1] ? parseInt(m[1]) : 0;
-                            const mi = m[2] ? parseInt(m[2]) : 0;
-                            const s = m[3] ? parseInt(m[3]) : 0;
-                            dur = (h ? h + ':' : '') + mi.toString().padStart(2,'0') + ':' + s.toString().padStart(2,'0');
-                        }
-                    }
-                    const views = item.statistics?.viewCount ? formatViews(item.statistics.viewCount) : '';
+                    const rawDur = data.items[0].contentDetails?.duration;
+                    if (rawDur) { const m = rawDur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/); if (m) { const h=m[1]?parseInt(m[1]):0; const mi=m[2]?parseInt(m[2]):0; const s=m[3]?parseInt(m[3]):0; dur=(h?h+':':'')+mi.toString().padStart(2,'0')+':'+s.toString().padStart(2,'0'); } }
+                    const views = data.items[0].statistics?.viewCount ? formatViews(data.items[0].statistics.viewCount) : '';
                     const idx = videoList.findIndex(v => v.id === id);
                     if (idx >= 0) { videoList[idx].duration = dur; videoList[idx].views = views; }
                     renderVideoList();
@@ -916,36 +825,20 @@ async function addVideoById(id, title, channel, duration) {
     saveToStorage();
 }
 
-function addFromModal() {
-    const url = document.getElementById('modalUrlInput').value;
-    const id = extractVideoId(url);
-    if (!id) { showToast('无效的 YouTube 链接', 'error'); return; }
-    addVideoById(id);
-    closeModal();
-}
+function addFromModal() { const url = document.getElementById('modalUrlInput').value; const id = extractVideoId(url); if (!id) { showToast('无效的 YouTube 链接', 'error'); return; } addVideoById(id); closeModal(); }
 
 function extractVideoId(url) {
-    url = url.trim();
-    if (!url) return null;
-    let m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-    if (m) return m[1];
-    m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-    if (m) return m[1];
-    m = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
-    if (m) return m[1];
-    m = url.match(/shorts\/([a-zA-Z0-9_-]{11})/);
-    if (m) return m[1];
+    url = url.trim(); if (!url) return null;
+    let m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/); if (m) return m[1];
+    m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/); if (m) return m[1];
+    m = url.match(/embed\/([a-zA-Z0-9_-]{11})/); if (m) return m[1];
+    m = url.match(/shorts\/([a-zA-Z0-9_-]{11})/); if (m) return m[1];
     if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
     return null;
 }
 
-// 搜索通过 Cloudflare Worker 完成；用户端无需保存 API Key。
 // ===================== MODE TOGGLE =====================
-document.getElementById('audioModeToggle').addEventListener('click', function() {
-    audioMode = true;
-    this.classList.add('active');
-    showToast('声音模式保持开启：画面不会显示', 'success');
-});
+document.getElementById('audioModeToggle').addEventListener('click', function() { audioMode = true; this.classList.add('active'); showToast('声音模式保持开启：画面不会显示', 'success'); });
 
 // ===================== SIDEBAR =====================
 function toggleSidebar() {
@@ -961,31 +854,12 @@ function toggleSidebar() {
     document.getElementById('headerToggle').setAttribute('aria-label', label);
 }
 
-// ===================== YOUTUBE PLAYER - 真实播放 =====================
+// ===================== YOUTUBE PLAYER =====================
 function onYouTubeIframeAPIReady() {
-    // 使用实际尺寸初始化播放器，确保在视口内
     player = new YT.Player('youtube-player', {
-        height: '270',
-        width: '480',
-        videoId: '',
-        playerVars: {
-            autoplay: 0,
-            controls: 1,
-            disablekb: 1,
-            fs: 0,
-            iv_load_policy: 3,
-            modestbranding: 1,
-            rel: 0,
-            showinfo: 0,
-            playsinline: 1,
-            enablejsapi: 1,
-            origin: /^https?:$/.test(window.location.protocol) ? window.location.origin : undefined
-        },
-        events: {
-            'onReady': onPlayerReady,
-            'onStateChange': onPlayerStateChange,
-            'onError': onPlayerError
-        }
+        height: '270', width: '480', videoId: '',
+        playerVars: { autoplay:0, controls:1, disablekb:1, fs:0, iv_load_policy:3, modestbranding:1, rel:0, showinfo:0, playsinline:1, enablejsapi:1, origin: /^https?:$/.test(window.location.protocol) ? window.location.origin : undefined },
+        events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange, 'onError': onPlayerError }
     });
 }
 
@@ -993,12 +867,9 @@ function onPlayerReady(event) {
     playerReady = true;
     try { player.unMute(); player.setVolume(parseInt(document.getElementById('volumeSlider').value) || 80); } catch(e) {}
     showToast('播放器已就绪，点击视频开始播放', 'success');
-    createVisualizer();
-    loadFromStorage();
+    createVisualizer(); loadFromStorage();
     if (videoList.length === 0) videoList = [...defaultVideos];
-    renderVideoList();
-    // 绑定搜索区域滚动提示
-    bindScrollHint();
+    renderVideoList(); bindScrollHint(); renderRecentSearches();
 }
 
 function onPlayerError(event) {
@@ -1009,33 +880,16 @@ function onPlayerError(event) {
 
 function onPlayerStateChange(event) {
     if (event.data === YT.PlayerState.PLAYING) {
-        isPlaying = true;
-        videoLoaded = true;
-        playCount++;
-        updatePlayUI();
-        startProgressUpdater();
-        showNwPBar();
-        updateStats();
-        startViz();
+        isPlaying = true; videoLoaded = true; playCount++; updatePlayUI(); startProgressUpdater(); showNwPBar(); updateStats(); startViz();
         if (currentIndex >= 0 && videoList[currentIndex]) { totalPlayTime += 1; saveToStorage(); }
     } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-        isPlaying = false;
-        updatePlayUI();
-        stopProgressUpdater();
-        stopViz();
+        isPlaying = false; updatePlayUI(); stopProgressUpdater(); stopViz();
         if (event.data === YT.PlayerState.ENDED) setTimeout(() => nextVideo(), 1500);
-    } else if (event.data === YT.PlayerState.BUFFERING) {
-        // 缓冲中
     } else if (event.data === YT.PlayerState.CUED) {
-        // 视频已准备
         videoLoaded = true;
-        // 获取时长
         if (player && typeof player.getDuration === 'function') {
             videoDuration = player.getDuration();
-            if (videoDuration > 0) {
-                document.getElementById('totalTime').textContent = formatTime(videoDuration);
-                document.getElementById('npTotal').textContent = formatTime(videoDuration);
-            }
+            if (videoDuration > 0) { document.getElementById('totalTime').textContent = formatTime(videoDuration); document.getElementById('npTotal').textContent = formatTime(videoDuration); }
         }
     }
 }
@@ -1043,212 +897,49 @@ function onPlayerStateChange(event) {
 // ===================== PLAYBACK =====================
 function playVideo(index) {
     if (index < 0 || index >= videoList.length) return;
-    currentIndex = index;
-    videoDuration = 0;
-    videoLoaded = false;
-    const video = videoList[index];
-    rememberPlay(video);
-
+    currentIndex = index; videoDuration = 0; videoLoaded = false;
+    const video = videoList[index]; rememberPlay(video);
     if (player && playerReady) {
-        try {
-            player.loadVideoById({ videoId: video.id, startSeconds: 0, suggestedQuality: 'small' });
-            player.unMute();
-            player.setVolume(parseInt(document.getElementById('volumeSlider').value) || 80);
-            player.playVideo();
-            isPlaying = true;
-        } catch(e) {
-            showToast('加载视频失败', 'error');
-            return;
-        }
-        // 设置音量
+        try { player.loadVideoById({ videoId: video.id, startSeconds: 0, suggestedQuality: 'small' }); player.unMute(); player.setVolume(parseInt(document.getElementById('volumeSlider').value) || 80); player.playVideo(); isPlaying = true; } catch(e) { showToast('加载视频失败', 'error'); return; }
         const vol = parseInt(document.getElementById('volumeSlider').value);
-        try { player.setVolume(vol); } catch(e) {}
-        try { player.setPlaybackRate(currentSpeed); } catch(e) {}
-        updatePlayUI();
-        updatePlayerUI(video);
-        document.getElementById('welcomeScreen').classList.add('hidden');
-        document.getElementById('playerScreen').classList.remove('hidden');
-        document.getElementById('nowPlayingBar').classList.add('show');
-        showNwPBar();
+        try { player.setVolume(vol); } catch(e) {} try { player.setPlaybackRate(currentSpeed); } catch(e) {}
     }
-    // 显示界面
-    updatePlayerUI(video);
+    updatePlayUI(); updatePlayerUI(video);
     document.getElementById('welcomeScreen').classList.add('hidden');
     document.getElementById('playerScreen').classList.remove('hidden');
     document.getElementById('nowPlayingBar').classList.add('show');
 }
 
-function resumeVideo() {
-    if (!player || !playerReady) { showToast('播放器未就绪', 'warning'); return; }
-    try {
-        player.playVideo();
-        isPlaying = true;
-        updatePlayUI();
-        startProgressUpdater();
-        startViz();
-        showNwPBar();
-    } catch(e) {
-        showToast('播放失败: ' + e.message, 'error');
-    }
-}
+function resumeVideo() { if (!player || !playerReady) { showToast('播放器未就绪', 'warning'); return; } try { player.playVideo(); isPlaying = true; updatePlayUI(); startProgressUpdater(); startViz(); showNwPBar(); } catch(e) { showToast('播放失败: ' + e.message, 'error'); } }
+function pauseVideo() { if (!player || !playerReady) return; try { player.pauseVideo(); } catch(e) {} isPlaying = false; updatePlayUI(); stopProgressUpdater(); stopViz(); }
+function togglePlay() { if (currentIndex < 0) { showToast('请先添加视频到列表', 'info'); return; } if (!player || !playerReady) { showToast('播放器正在初始化，请稍候...', 'info'); return; } if (isPlaying) pauseVideo(); else resumeVideo(); }
 
-function pauseVideo() {
-    if (!player || !playerReady) return;
-    try { player.pauseVideo(); } catch(e) {}
-    isPlaying = false;
-    updatePlayUI();
-    stopProgressUpdater();
-    stopViz();
-}
+function nextVideo() { if (videoList.length === 0) return; const next = (currentIndex + 1) % videoList.length; playVideo(next); if (player && playerReady) { try { player.playVideo(); isPlaying = true; updatePlayUI(); startProgressUpdater(); startViz(); } catch(e) {} } }
+function prevVideo() { if (videoList.length === 0) return; if (player && playerReady) { try { const ct = player.getCurrentTime(); if (ct > 3) { player.seekTo(0); return; } } catch(e) {} } const prev = (currentIndex - 1 + videoList.length) % videoList.length; playVideo(prev); if (player && playerReady) { try { player.playVideo(); isPlaying = true; updatePlayUI(); startProgressUpdater(); startViz(); } catch(e) {} } }
 
-function togglePlay() {
-    if (currentIndex < 0) { showToast('请先添加视频到列表', 'info'); return; }
-    if (!player || !playerReady) { showToast('播放器正在初始化，请稍候...', 'info'); return; }
-    if (isPlaying) pauseVideo(); else resumeVideo();
-}
-
-function nextVideo() {
-    if (videoList.length === 0) return;
-    const next = (currentIndex + 1) % videoList.length;
-    playVideo(next);
-    // 自动播放
-    if (player && playerReady) {
-        try { player.playVideo(); isPlaying = true; updatePlayUI(); startProgressUpdater(); startViz(); } catch(e) {}
-    }
-}
-
-function prevVideo() {
-    if (videoList.length === 0) return;
-    if (player && playerReady) {
-        try {
-            const currentTime = player.getCurrentTime();
-            if (currentTime > 3) { player.seekTo(0); return; }
-        } catch(e) {}
-    }
-    const prev = (currentIndex - 1 + videoList.length) % videoList.length;
-    playVideo(prev);
-    if (player && playerReady) {
-        try { player.playVideo(); isPlaying = true; updatePlayUI(); startProgressUpdater(); startViz(); } catch(e) {}
-    }
-}
-
-function seekVideo(event) {
-    if (!player || !playerReady || !isPlaying) return;
-    const track = document.getElementById('progressTrack');
-    const rect = track.getBoundingClientRect();
-    const pos = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-    try {
-        const duration = player.getDuration();
-        if (duration > 0) player.seekTo(duration * pos);
-    } catch(e) {}
-}
-
-function setVolume(val) {
-    if (!player || !playerReady) return;
-    try { player.setVolume(parseInt(val)); } catch(e) {}
-    const icon = document.getElementById('volIcon');
-    if (val == 0) icon.className = 'fas fa-volume-xmark';
-    else if (val < 40) icon.className = 'fas fa-volume-low';
-    else icon.className = 'fas fa-volume-high';
-}
-
-function cycleSpeed() {
-    const idx = speeds.indexOf(currentSpeed);
-    currentSpeed = speeds[(idx + 1) % speeds.length];
-    if (player && playerReady) try { player.setPlaybackRate(currentSpeed); } catch(e) {}
-    document.getElementById('speedBtn').textContent = currentSpeed.toFixed(2) + 'x';
-}
+function seekVideo(event) { if (!player || !playerReady || !isPlaying) return; const track = document.getElementById('progressTrack'); const rect = track.getBoundingClientRect(); const pos = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)); try { const duration = player.getDuration(); if (duration > 0) player.seekTo(duration * pos); } catch(e) {} }
+function setVolume(val) { if (!player || !playerReady) return; try { player.setVolume(parseInt(val)); } catch(e) {} const icon = document.getElementById('volIcon'); if (val == 0) icon.className = 'fas fa-volume-xmark'; else if (val < 40) icon.className = 'fas fa-volume-low'; else icon.className = 'fas fa-volume-high'; }
+function cycleSpeed() { const idx = speeds.indexOf(currentSpeed); currentSpeed = speeds[(idx + 1) % speeds.length]; if (player && playerReady) try { player.setPlaybackRate(currentSpeed); } catch(e) {} document.getElementById('speedBtn').textContent = currentSpeed.toFixed(2) + 'x'; }
 
 // ===================== PROGRESS =====================
-function startProgressUpdater() {
-    stopProgressUpdater();
-    progressInterval = setInterval(updateProgress, 250);
-}
-
-function stopProgressUpdater() {
-    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
-}
-
-function updateProgress() {
-    if (!player || !playerReady || currentIndex < 0) return;
-    try {
-        const current = player.getCurrentTime() || 0;
-        const duration = player.getDuration() || 0;
-
-        // 保存时长以供显示
-        if (duration > 0) videoDuration = duration;
-
-        const percent = duration > 0 ? (current / duration) * 100 : 0;
-
-        // 更新时间显示
-        document.getElementById('currentTime').textContent = formatTime(current);
-        document.getElementById('totalTime').textContent = formatTime(duration);
-        document.getElementById('progressFill').style.width = percent + '%';
-        document.getElementById('npCurrent').textContent = formatTime(current);
-        document.getElementById('npTotal').textContent = formatTime(duration);
-        document.getElementById('npProgressFill').style.width = percent + '%';
-
-        // 计算节省流量
-        const savedPerHour = (2500 - 128) * 0.001;
-        const savedMB = totalPlayTime > 0 ? totalPlayTime * (savedPerHour / 3600) : 0;
-        document.getElementById('dataSaved').textContent = formatBytes(savedMB);
-        document.getElementById('welcomeSaved').textContent = formatBytes(savedMB);
-    } catch(e) {
-        // 播放器可能还未准备好，静默处理
-    }
-}
+function startProgressUpdater() { stopProgressUpdater(); progressInterval = setInterval(updateProgress, 250); }
+function stopProgressUpdater() { if (progressInterval) { clearInterval(progressInterval); progressInterval = null; } }
+function updateProgress() { if (!player || !playerReady || currentIndex < 0) return; try { const current = player.getCurrentTime() || 0; const duration = player.getDuration() || 0; if (duration > 0) videoDuration = duration; const percent = duration > 0 ? (current / duration) * 100 : 0; document.getElementById('currentTime').textContent = formatTime(current); document.getElementById('totalTime').textContent = formatTime(duration); document.getElementById('progressFill').style.width = percent + '%'; document.getElementById('npCurrent').textContent = formatTime(current); document.getElementById('npTotal').textContent = formatTime(duration); document.getElementById('npProgressFill').style.width = percent + '%'; const savedPerHour = (2500 - 128) * 0.001; const savedMB = totalPlayTime > 0 ? totalPlayTime * (savedPerHour / 3600) : 0; document.getElementById('dataSaved').textContent = formatBytes(savedMB); document.getElementById('welcomeSaved').textContent = formatBytes(savedMB); } catch(e) {} }
 
 // ===================== UI UPDATES =====================
-function updatePlayUI() {
-    const cls = isPlaying ? 'fas fa-pause' : 'fas fa-play';
-    document.getElementById('mainPlayIcon').className = cls;
-    document.getElementById('overlayPlayIcon').className = cls;
-    document.getElementById('npPlayBtn').innerHTML = `<i class="${cls}"></i>`;
-}
-
-function updatePlayerUI(video) {
-    document.getElementById('trackTitle').textContent = video.title;
-    document.getElementById('trackChannel').textContent = video.channel;
-    const img = document.getElementById('albumArtImg');
-    img.src = `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`;
-    img.onerror = () => { img.src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`; };
-    document.getElementById('npThumb').src = `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`;
-    document.getElementById('npTitle').textContent = video.title;
-    document.getElementById('npChannel').textContent = video.channel;
-    updatePlayUI();
-}
-
+function updatePlayUI() { const cls = isPlaying ? 'fas fa-pause' : 'fas fa-play'; document.getElementById('mainPlayIcon').className = cls; document.getElementById('overlayPlayIcon').className = cls; document.getElementById('npPlayBtn').innerHTML = `<i class="${cls}"></i>`; }
+function updatePlayerUI(video) { document.getElementById('trackTitle').textContent = video.title; document.getElementById('trackChannel').textContent = video.channel; const img = document.getElementById('albumArtImg'); img.src = `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`; img.onerror = () => { img.src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`; }; document.getElementById('npThumb').src = `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`; document.getElementById('npTitle').textContent = video.title; document.getElementById('npChannel').textContent = video.channel; updatePlayUI(); }
 function showNwPBar() { setTimeout(() => document.getElementById('nowPlayingBar').classList.add('show'), 100); }
 
 // ===================== VIDEO LIST =====================
 function renderVideoList() {
     const container = document.getElementById('videoList');
-    if (videoList.length === 0) {
-        container.innerHTML = `<div class="list-empty"><i class="fas fa-video-slash"></i>播放列表为空<br><small>在上方搜索栏搜索视频，或点击"添加"按钮</small></div>`;
-        return;
-    }
+    if (videoList.length === 0) { container.innerHTML = `<div class="list-empty"><i class="fas fa-video-slash"></i>播放列表为空<br><small>在上方搜索栏搜索视频，或点击"添加"按钮</small></div>`; return; }
     container.innerHTML = '';
     videoList.forEach((video, index) => {
         const item = document.createElement('div');
         item.className = 'video-item' + (index === currentIndex ? ' active' : '');
-        item.innerHTML = `
-            <div class="thumb">
-                <img src="https://img.youtube.com/vi/${video.id}/mqdefault.jpg" alt="${escapeHtml(video.title)}" loading="lazy"
-                    onerror="this.style.display='none'">
-                <span class="audio-badge"><i class="fas fa-headphones"></i> 音频</span>
-                <span class="duration">${video.duration || '...'}</span>
-            </div>
-            <div class="video-info">
-                <div class="video-title">${escapeHtml(video.title)}</div>
-                <div class="video-meta">
-                    <div>
-                        <div class="video-channel">${escapeHtml(video.channel || '未知频道')}</div>
-                        <div class="video-views">${video.views ? video.views + ' 次观看' : ''}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="video-remove" onclick="event.stopPropagation();removeVideo(${index})"><i class="fas fa-times"></i></div>
-        `;
+        item.innerHTML = `<div class="thumb"><img src="https://img.youtube.com/vi/${video.id}/mqdefault.jpg" alt="${escapeHtml(video.title)}" loading="lazy" onerror="this.style.display='none'"><span class="audio-badge"><i class="fas fa-headphones"></i> 音频</span><span class="duration">${video.duration || '...'}</span></div><div class="video-info"><div class="video-title">${escapeHtml(video.title)}</div><div class="video-meta"><div><div class="video-channel">${escapeHtml(video.channel || '未知频道')}</div><div class="video-views">${video.views ? video.views + ' 次观看' : ''}</div></div></div></div><div class="video-remove" onclick="event.stopPropagation();removeVideo(${index})"><i class="fas fa-times"></i></div>`;
         item.onclick = () => playVideo(index);
         container.appendChild(item);
     });
@@ -1257,172 +948,93 @@ function renderVideoList() {
 function removeVideo(index) {
     if (index < 0 || index >= videoList.length) return;
     const removed = videoList.splice(index, 1)[0];
-    if (currentIndex === index) {
-        pauseVideo();
-        document.getElementById('playerScreen').classList.add('hidden');
-        document.getElementById('nowPlayingBar').classList.remove('show');
-        document.getElementById('welcomeScreen').classList.remove('hidden');
-        currentIndex = -1;
-    } else if (currentIndex > index) { currentIndex--; }
-    renderVideoList();
-    refreshSearchResultStates();
-    saveToStorage();
+    if (currentIndex === index) { pauseVideo(); document.getElementById('playerScreen').classList.add('hidden'); document.getElementById('nowPlayingBar').classList.remove('show'); document.getElementById('welcomeScreen').classList.remove('hidden'); currentIndex = -1; }
+    else if (currentIndex > index) { currentIndex--; }
+    renderVideoList(); refreshSearchResultStates(); saveToStorage();
     showToast(`已移除 "${removed.title}"`, 'info');
 }
 
 // ===================== VISUALIZER =====================
 function createVisualizer() {
-    const container = document.getElementById('visualizer');
-    container.innerHTML = '';
-    vizBars = [];
-    for (let i = 0; i < 48; i++) {
-        const bar = document.createElement('div');
-        bar.className = 'viz-bar';
-        bar.style.animationDelay = (Math.random() * 1).toFixed(2) + 's';
-        bar.style.height = (Math.random() * 15 + 5) + '%';
-        container.appendChild(bar);
-        vizBars.push(bar);
-    }
+    const container = document.getElementById('visualizer'); container.innerHTML = ''; vizBars = [];
+    for (let i = 0; i < 48; i++) { const bar = document.createElement('div'); bar.className = 'viz-bar'; bar.style.animationDelay = (Math.random() * 1).toFixed(2) + 's'; bar.style.height = (Math.random() * 15 + 5) + '%'; container.appendChild(bar); vizBars.push(bar); }
 }
-
-function startViz() {
-    if (!vizBars.length) return;
-    const animate = () => {
-        if (!isPlaying) return;
-        vizBars.forEach(bar => {
-            bar.style.height = (Math.random() * 80 + 10) + '%';
-            bar.style.opacity = 0.5 + Math.random() * 0.5;
-        });
-        setTimeout(animate, 200 + Math.random() * 300);
-    };
-    animate();
-}
-
-function stopViz() {
-    vizBars.forEach(bar => { bar.style.height = (Math.random() * 15 + 5) + '%'; bar.style.opacity = 0.3; });
-}
+function startViz() { if (!vizBars.length) return; const animate = () => { if (!isPlaying) return; vizBars.forEach(bar => { bar.style.height = (Math.random() * 80 + 10) + '%'; bar.style.opacity = 0.5 + Math.random() * 0.5; }); setTimeout(animate, 200 + Math.random() * 300); }; animate(); }
+function stopViz() { vizBars.forEach(bar => { bar.style.height = (Math.random() * 15 + 5) + '%'; bar.style.opacity = 0.3; }); }
 
 // ===================== MODAL =====================
-function openModal() {
-    document.getElementById('modalOverlay').classList.add('show');
-    document.getElementById('modalUrlInput').value = '';
-    setTimeout(() => document.getElementById('modalUrlInput').focus(), 100);
-}
-
+function openModal() { document.getElementById('modalOverlay').classList.add('show'); document.getElementById('modalUrlInput').value = ''; setTimeout(() => document.getElementById('modalUrlInput').focus(), 100); }
 function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
-
-document.getElementById('modalOverlay').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-});
+document.getElementById('modalOverlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 
 // ===================== KEYBOARD =====================
 document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT') return;
-    switch(e.code) {
-        case 'Space': e.preventDefault(); if (currentIndex >= 0) togglePlay(); break;
-        case 'ArrowRight': e.preventDefault(); nextVideo(); break;
-        case 'ArrowLeft': e.preventDefault(); prevVideo(); break;
-        case 'KeyM': document.getElementById('audioModeToggle').click(); break;
-        case 'Escape': closeModal(); break;
-    }
+    switch(e.code) { case 'Space': e.preventDefault(); if (currentIndex >= 0) togglePlay(); break; case 'ArrowRight': e.preventDefault(); nextVideo(); break; case 'ArrowLeft': e.preventDefault(); prevVideo(); break; case 'KeyM': document.getElementById('audioModeToggle').click(); break; case 'Escape': closeModal(); break; }
 });
 
 // ===================== UTILS =====================
-function formatTime(seconds) {
-    if (!seconds || isNaN(seconds)) return '0:00';
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatBytes(mb) {
-    if (!mb || mb <= 0) return '0 MB';
-    if (mb < 1) return '<1 MB';
-    return mb.toFixed(1) + ' MB';
-}
-
-function formatViews(n) {
-    n = parseInt(n);
-    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
-    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-    return n.toString();
-}
-
-function showToast(message, type) {
-    type = type || 'info';
-    const container = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    const icons = { success:'fa-check-circle', info:'fa-info-circle', warning:'fa-exclamation-triangle', error:'fa-times-circle' };
-    const colors = { success:'var(--success)', info:'var(--accent-1)', warning:'var(--warning)', error:'var(--danger)' };
-    toast.innerHTML = `<i class="fas ${icons[type]}" style="color:${colors[type]}"></i> ${message}`;
-    container.appendChild(toast);
-    setTimeout(() => { toast.style.animation = 'toastOut 0.3s forwards'; setTimeout(() => toast.remove(), 300); }, 3000);
-}
+function formatTime(seconds) { if (!seconds || isNaN(seconds)) return '0:00'; const m = Math.floor(seconds / 60); const s = Math.floor(seconds % 60); return `${m}:${s.toString().padStart(2, '0')}`; }
+function formatBytes(mb) { if (!mb || mb <= 0) return '0 MB'; if (mb < 1) return '<1 MB'; return mb.toFixed(1) + ' MB'; }
+function formatViews(n) { n = parseInt(n); if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'; return n.toString(); }
+function showToast(message, type) { type = type || 'info'; const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = `toast ${type}`; const icons = { success:'fa-check-circle', info:'fa-info-circle', warning:'fa-exclamation-triangle', error:'fa-times-circle' }; const colors = { success:'var(--success)', info:'var(--accent-1)', warning:'var(--warning)', error:'var(--danger)' }; toast.innerHTML = `<i class="fas ${icons[type]}" style="color:${colors[type]}"></i> ${message}`; container.appendChild(toast); setTimeout(() => { toast.style.animation = 'toastOut 0.3s forwards'; setTimeout(() => toast.remove(), 300); }, 3000); }
 
 // ===================== STORAGE =====================
-function saveToStorage() {
-    try { const data = { videoList, totalPlayTime, playCount, currentSpeed, searchHistory, playHistory }; localStorage.setItem('soundflow_data', JSON.stringify(data)); } catch(e) {}
-}
+function saveToStorage() { try { const data = { videoList, totalPlayTime, playCount, currentSpeed, searchHistory, playHistory }; localStorage.setItem('soundflow_data', JSON.stringify(data)); } catch(e) {} }
+function loadFromStorage() { try { const saved = localStorage.getItem('soundflow_data'); if (saved) { const data = JSON.parse(saved); if (data.videoList && data.videoList.length > 0) videoList = data.videoList; totalPlayTime = data.totalPlayTime || 0; playCount = data.playCount || 0; currentSpeed = data.currentSpeed || 1.0; searchHistory = Array.isArray(data.searchHistory) ? data.searchHistory : []; playHistory = Array.isArray(data.playHistory) ? data.playHistory : []; document.getElementById('speedBtn').textContent = currentSpeed.toFixed(2) + 'x'; } } catch(e) {} }
 
-function loadFromStorage() {
-    try {
-        const saved = localStorage.getItem('soundflow_data');
-        if (saved) {
-            const data = JSON.parse(saved);
-            if (data.videoList && data.videoList.length > 0) videoList = data.videoList;
-            totalPlayTime = data.totalPlayTime || 0;
-            playCount = data.playCount || 0;
-            currentSpeed = data.currentSpeed || 1.0;
-            searchHistory = Array.isArray(data.searchHistory) ? data.searchHistory : [];
-            playHistory = Array.isArray(data.playHistory) ? data.playHistory : [];
-            document.getElementById('speedBtn').textContent = currentSpeed.toFixed(2) + 'x';
-        }
-    } catch(e) {}
-}
-
-// ===================== HISTORY =====================
-function rememberSearch(query) {
-    searchHistory = searchHistory.filter(item => item.query.toLowerCase() !== query.toLowerCase());
-    searchHistory.unshift({ query, time: Date.now() });
-    searchHistory = searchHistory.slice(0, 30);
-    saveToStorage();
-    renderRecentSearches();
-}
+// ===================== HISTORY & PLAYLIST =====================
+function rememberSearch(query) { searchHistory = searchHistory.filter(item => item.query.toLowerCase() !== query.toLowerCase()); searchHistory.unshift({ query, time: Date.now() }); searchHistory = searchHistory.slice(0, 30); saveToStorage(); renderRecentSearches(); }
 
 function renderRecentSearches() {
-    const container = document.getElementById('quickChips');
-    if (!container) return;
+    const container = document.getElementById('quickChips'); if (!container) return;
     const recent = searchHistory.slice(0, 8).map(item => item.query);
     const terms = [...new Set([...recent, ...DEFAULT_SEARCHES])].slice(0, 10);
-    container.replaceChildren(...terms.map(term => {
-        const chip = document.createElement('span');
-        chip.className = 'chip'; chip.textContent = term; chip.title = '快速搜索';
-        chip.onclick = () => quickSearch(term);
-        return chip;
-    }));
+    container.replaceChildren(...terms.map(term => { const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = term; chip.title = '快速搜索'; chip.onclick = () => quickSearch(term); return chip; }));
 }
 
-function rememberPlay(video) {
-    playHistory = playHistory.filter(item => item.id !== video.id);
-    playHistory.unshift({ ...video, time: Date.now() });
-    playHistory = playHistory.slice(0, 50);
-    saveToStorage();
-}
+function rememberPlay(video) { playHistory = playHistory.filter(item => item.id !== video.id); playHistory.unshift({ ...video, time: Date.now() }); playHistory = playHistory.slice(0, 50); saveToStorage(); }
 
 function openHistory() { document.getElementById('historyOverlay').classList.add('show'); renderHistory(activeHistoryType); }
 function closeHistory() { document.getElementById('historyOverlay').classList.remove('show'); }
+
 function renderHistory(type) {
     activeHistoryType = type;
     document.getElementById('searchHistoryTab').classList.toggle('active', type === 'search');
     document.getElementById('playHistoryTab').classList.toggle('active', type === 'play');
+    document.getElementById('playlistHistoryTab').classList.toggle('active', type === 'playlist');
+
     const list = document.getElementById('historyList');
+    const actions = document.getElementById('historyActions');
+    const countEl = document.getElementById('historyCount');
+    const clearBtn = document.getElementById('clearHistoryBtn');
+    const clearText = document.getElementById('clearHistoryText');
+
+    if (type === 'playlist') {
+        // 播放列表：显示清空按钮
+        actions.classList.remove('hidden');
+        clearBtn.className = 'btn btn-danger-ghost';
+        clearText.textContent = '清空播放列表';
+        renderPlaylistHistory();
+        const total = videoList.length;
+        countEl.innerHTML = `共 <strong>${total}</strong> 个视频 · <span class="clear-link" onclick="confirmClearPlaylist()">清空全部</span>`;
+        return;
+    }
+
+    // 其他履历：显示清空按钮
+    actions.classList.remove('hidden');
+    clearBtn.className = 'btn btn-danger-ghost';
+    clearText.textContent = type === 'search' ? '清空搜索履历' : '清空播放履历';
+
     const items = type === 'search' ? searchHistory : playHistory;
-    if (!items.length) { list.innerHTML = '<div class="history-empty">还没有履历</div>'; return; }
+    if (!items.length) { list.innerHTML = '<div class="history-empty">还没有履历</div>'; countEl.innerHTML = ''; return; }
+
+    if (type === 'search') countEl.innerHTML = `共 <strong>${items.length}</strong> 条搜索记录`;
+    else countEl.innerHTML = `共 <strong>${items.length}</strong> 条播放记录`;
+
     list.innerHTML = items.map((item, index) => type === 'search' ? `
         <div class="history-item">
-            <i class="fas fa-search" style="color:var(--accent-1)"></i>
+            <i class="fas fa-search" style="color:var(--accent-1);font-size:1.1rem"></i>
             <div class="history-main"><div class="history-title">${escapeHtml(item.query)}</div><div class="history-meta">${formatHistoryTime(item.time)}</div></div>
             <button class="btn btn-sm btn-primary" onclick="searchAgain(${index})">再次搜索</button>
         </div>` : `
@@ -1433,38 +1045,67 @@ function renderHistory(type) {
         </div>`).join('');
 }
 
-function searchAgain(index) {
-    const item = searchHistory[index]; if (!item) return;
-    closeHistory(); document.getElementById('searchInput').value = item.query; currentSearchQuery = item.query; doSearch();
+function renderPlaylistHistory() {
+    const list = document.getElementById('historyList');
+    if (!videoList.length) { list.innerHTML = '<div class="history-empty"><i class="fas fa-video-slash" style="font-size:2rem;display:block;margin-bottom:8px;opacity:0.3"></i>播放列表为空<br><small>添加视频后将在此显示</small></div>'; return; }
+    list.innerHTML = videoList.map((video, index) => `
+        <div class="history-item">
+            <img src="https://img.youtube.com/vi/${video.id}/mqdefault.jpg" alt="${escapeHtml(video.title)}" onerror="this.style.display='none'">
+            <div class="history-main">
+                <div class="history-title">${escapeHtml(video.title)}</div>
+                <div class="history-meta">${escapeHtml(video.channel || '未知频道')} · ${video.duration || ''} · 第${index + 1}首</div>
+            </div>
+            <div style="display:flex;gap:5px;flex-shrink:0">
+                <button class="btn btn-sm btn-primary" onclick="playFromPlaylist(${index})" title="播放"><i class="fas fa-play"></i></button>
+                <button class="btn btn-sm btn-danger-ghost" onclick="removeFromPlaylist(${index})" title="移除"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+    `).join('');
 }
-function playAgain(id) {
-    const item = playHistory.find(v => v.id === id); if (!item) return;
-    closeHistory();
-    let index = videoList.findIndex(v => v.id === id);
-    if (index < 0) { videoList.push({ id:item.id, title:item.title, channel:item.channel, views:item.views || '', duration:item.duration || '...' }); index = videoList.length - 1; renderVideoList(); }
-    playVideo(index);
+
+function playFromPlaylist(index) { if (index >= 0 && index < videoList.length) { playVideo(index); closeHistory(); } }
+function removeFromPlaylist(index) { removeVideo(index); if (activeHistoryType === 'playlist') renderPlaylistHistory(); }
+
+function confirmClearPlaylist() {
+    if (!videoList.length) { showToast('播放列表已经是空的', 'info'); return; }
+    if (confirm(`确定要清空播放列表吗？共 ${videoList.length} 个视频将被移除。`)) { clearPlaylist(); }
 }
+
+function clearPlaylist() {
+    const wasPlaying = currentIndex >= 0 && isPlaying;
+    videoList = []; currentIndex = -1;
+    saveToStorage();
+    renderVideoList();
+    if (activeHistoryType === 'playlist') renderPlaylistHistory();
+    if (wasPlaying) {
+        pauseVideo();
+        document.getElementById('playerScreen').classList.add('hidden');
+        document.getElementById('nowPlayingBar').classList.remove('show');
+        document.getElementById('welcomeScreen').classList.remove('hidden');
+    }
+    showToast('播放列表已清空', 'success');
+}
+
 function clearCurrentHistory() {
-    if (activeHistoryType === 'search') searchHistory = []; else playHistory = [];
-    saveToStorage(); renderHistory(activeHistoryType); showToast('履历已清空', 'info');
+    if (activeHistoryType === 'playlist') { clearPlaylist(); return; }
+    if (activeHistoryType === 'search') { searchHistory = []; } else { playHistory = []; }
+    saveToStorage(); renderHistory(activeHistoryType);
+    showToast(activeHistoryType === 'search' ? '搜索履历已清空' : '播放履历已清空', 'info');
 }
+
+function searchAgain(index) { const item = searchHistory[index]; if (!item) return; closeHistory(); document.getElementById('searchInput').value = item.query; currentSearchQuery = item.query; doSearch(); }
+function playAgain(id) { const item = playHistory.find(v => v.id === id); if (!item) return; closeHistory(); let index = videoList.findIndex(v => v.id === id); if (index < 0) { videoList.push({ id:item.id, title:item.title, channel:item.channel, views:item.views || '', duration:item.duration || '...' }); index = videoList.length - 1; renderVideoList(); } playVideo(index); }
 function formatHistoryTime(time) { return new Date(time).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }); }
 
 document.getElementById('historyOverlay').addEventListener('click', function(e) { if (e.target === this) closeHistory(); });
 
-function updateStats() {
-    document.getElementById('playingCount').textContent = playCount;
-    saveToStorage();
-}
+function updateStats() { document.getElementById('playingCount').textContent = playCount; saveToStorage(); }
 
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', () => {
-    createVisualizer();
-    loadFromStorage();
+    createVisualizer(); loadFromStorage();
     if (videoList.length === 0) videoList = [...defaultVideos];
-    renderVideoList();
-    bindScrollHint();
-    renderRecentSearches();
+    renderVideoList(); bindScrollHint(); renderRecentSearches();
     try { localStorage.removeItem('soundflow_apikey'); } catch(e) {}
 });
 </script>
