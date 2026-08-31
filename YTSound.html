@@ -47,10 +47,9 @@ input{font-family:inherit;outline:none;border:none}
 .btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid var(--danger)}
 .btn-danger-ghost:hover{background:rgba(239,68,68,0.1)}
 
-/* 切换按钮 - 黑色背景+灰色字体，与履历按钮同风格 */
-.btn-switch{background:#000!important;color:#a0a0b8!important;border:1px solid #333!important;font-size:0.78rem!important;font-weight:600!important;padding:5px 12px!important;gap:4px!important;letter-spacing:0.5px}
-.btn-switch:hover{background:#1a1a1a!important;color:#c0c0c0!important;border-color:#444!important}
-.btn-switch i{color:#a0a0b8!important}
+/* 切换按钮 - 灰黑色背景 + 灰色字体，与履历按钮同风格 */
+.btn-switch{background:#1a1a1a!important;color:#a0a0b8!important;border:1px solid #333!important;font-weight:600!important;letter-spacing:0.3px}
+.btn-switch:hover{background:#2a2a2a!important;color:#c0c0c0!important;border-color:#444!important}
 
 /* APP */
 .app{display:flex;height:100vh;padding-top:60px}
@@ -59,8 +58,6 @@ input{font-family:inherit;outline:none;border:none}
 .sidebar-toggle{position:absolute;top:68px;left:390px;z-index:90;width:52px;height:48px;background:#e5e7eb;border:1px solid #cbd5e1;border-left:none;border-radius:0 var(--radius-sm) var(--radius-sm) 0;display:flex;align-items:center;justify-content:center;color:#111827;transition:var(--transition);font-size:0.78rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .sidebar-toggle:hover{color:#000;background:#f8fafc}
 .sidebar.collapsed~.sidebar-toggle{left:0}
-.header-collapse-btn{padding:5px 12px!important;justify-content:center!important;background:#e5e7eb!important;border:1px solid #cbd5e1!important;color:#111827!important;font-size:0.78rem;font-weight:700}
-.header-collapse-btn:hover{background:#f8fafc!important;color:#000!important}
 
 /* SIDEBAR HEADER */
 .sidebar-header{padding:12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
@@ -370,7 +367,8 @@ input{font-family:inherit;outline:none;border:none}
     </div>
     <div class="header-actions">
         <div class="mode-toggle active" id="audioModeToggle" title="声音模式"><div class="toggle-dot"></div><span>纯音频</span></div>
-        <button class="btn btn-switch" id="headerToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏"><i class="fas fa-chevron-left" id="headerToggleIcon"></i> 切换</button>
+        <!-- 切换按钮：改为与履历按钮同风格（灰黑色背景 + 灰色字体） -->
+        <button class="btn btn-switch" id="headerToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏">切换</button>
         <button class="btn btn-ghost" onclick="openHistory()" title="搜索与播放履历"><i class="fas fa-clock-rotate-left"></i> <span class="btn-label">履历</span></button>
         <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> <span class="btn-label">添加</span></button>
     </div>
