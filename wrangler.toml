@@ -3,4 +3,4 @@ main = "worker.js"
 compatibility_date = "2026-08-31"
 
 [vars]
-ALLOWED_ORIGINS = "https://tsukukiku.github.io,https://star-style-studio.net"
+ALLOWED_ORIGINS = "https://tsukukiku.github.io,https://star-style-studio.net,https://www.star-style-studio.net"
