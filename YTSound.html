@@ -51,10 +51,10 @@ input{font-family:inherit;outline:none;border:none}
 .app{display:flex;height:100vh;padding-top:60px}
 .sidebar{width:390px;min-width:390px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:var(--transition);position:relative}
 .sidebar.collapsed{width:0;min-width:0;border:none}
-.sidebar-toggle{position:absolute;top:68px;left:390px;z-index:90;width:28px;height:48px;background:#e5e7eb;border:1px solid #cbd5e1;border-left:none;border-radius:0 var(--radius-sm) var(--radius-sm) 0;display:flex;align-items:center;justify-content:center;color:#111827;transition:var(--transition);font-size:0.8rem;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.sidebar.collapsed~.sidebar-toggle{left:0}
+.sidebar-toggle{position:absolute;top:68px;left:390px;z-index:90;width:52px;height:48px;background:#e5e7eb;border:1px solid #cbd5e1;border-left:none;border-radius:0 var(--radius-sm) var(--radius-sm) 0;display:flex;align-items:center;justify-content:center;color:#111827;transition:var(--transition);font-size:0.78rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .sidebar-toggle:hover{color:#000;background:#f8fafc}
-.header-collapse-btn{width:38px;height:30px;padding:0!important;justify-content:center!important;background:#e5e7eb!important;border:1px solid #cbd5e1!important;color:#111827!important}
+.sidebar.collapsed~.sidebar-toggle{left:0}
+.header-collapse-btn{width:auto!important;padding:6px 14px!important;justify-content:center!important;background:#e5e7eb!important;border:1px solid #cbd5e1!important;color:#111827!important;font-size:0.78rem;font-weight:700}
 .header-collapse-btn:hover{background:#f8fafc!important;color:#000!important}
 
 /* SIDEBAR HEADER */
@@ -108,9 +108,10 @@ input{font-family:inherit;outline:none;border:none}
 
 .search-results-header{padding:7px 10px;font-size:0.76rem;color:#1f2937;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;position:sticky;top:0;background:#858b95;z-index:2;border-bottom:1px solid #aeb4bd;margin-bottom:0}
 .search-results-header .results-label{justify-self:start;white-space:nowrap}.search-results-header .results-actions{justify-self:end}
-.results-collapse-btn,.add-all-btn{padding:3px 7px;border-radius:5px;background:#d1d5db;border:1px solid #b8bec7;color:#111827;font-size:.7rem;white-space:nowrap}
-.results-collapse-btn{width:30px;height:24px;padding:0}
-.results-collapse-btn:hover,.add-all-btn:hover{background:#e5e7eb}
+.results-collapse-btn{width:auto!important;padding:3px 14px!important;background:#fff!important;border:1px solid #cbd5e1!important;color:#111827!important;font-size:.72rem;font-weight:700;white-space:nowrap}
+.results-collapse-btn:hover{background:#f3f4f6!important}
+.add-all-btn{padding:3px 10px;border-radius:5px;background:#d1d5db;border:1px solid #b8bec7;color:#111827;font-size:.7rem;white-space:nowrap;font-weight:600}
+.add-all-btn:hover{background:#e5e7eb}
 .search-results-header .count{color:#5b21b6;font-weight:800}
 .search-result-card{display:flex;gap:8px;padding:8px 14px;cursor:pointer;transition:var(--transition);border-bottom:1px solid #858b95;margin:0;background:#737983;color:#111827}
 .search-result-card:hover{background:#858b95}
@@ -199,8 +200,11 @@ input{font-family:inherit;outline:none;border:none}
 .album-art-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,10,15,0.8),transparent 60%)}
 .album-art .play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);opacity:0;transition:var(--transition)}
 .album-art:hover .play-overlay{opacity:1}
-.play-overlay-btn{width:56px;height:56px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--bg-primary);box-shadow:0 8px 24px rgba(0,0,0,0.3);transition:var(--transition)}
+.play-overlay-btn{width:56px;height:56px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:var(--transition);box-shadow:0 8px 24px rgba(0,0,0,0.3);padding:0}
 .play-overlay-btn:hover{transform:scale(1.1)}
+.play-overlay-btn .pink-icon{color:#ec4899}
+.play-overlay-btn .pink-icon.play-icon{width:22px;height:24px}
+.play-overlay-btn .pink-icon.pause-icon{width:18px;height:22px}
 .track-info{text-align:center}
 .track-title{font-size:1.4rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:460px}
 .track-channel{font-size:0.9rem;color:var(--text-muted)}
@@ -227,8 +231,11 @@ input{font-family:inherit;outline:none;border:none}
 .controls{display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 0}
 .ctrl-btn{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:1rem;transition:var(--transition)}
 .ctrl-btn:hover{color:var(--text-primary);background:var(--bg-hover)}
-.ctrl-btn.play-main{width:52px;height:52px;background:var(--text-primary);color:var(--bg-primary);font-size:1.2rem}
+.ctrl-btn.play-main{width:52px;height:52px;background:var(--text-primary);color:var(--bg-primary)}
 .ctrl-btn.play-main:hover{transform:scale(1.08);box-shadow:0 4px 20px rgba(255,255,255,0.2)}
+.ctrl-btn.play-main .pink-icon{color:#ec4899}
+.ctrl-btn.play-main .pink-icon.play-icon{width:22px;height:24px}
+.ctrl-btn.play-main .pink-icon.pause-icon{width:18px;height:22px}
 .volume-control{display:flex;align-items:center;gap:5px;margin-left:14px}
 .volume-slider{-webkit-appearance:none;appearance:none;width:80px;height:4px;background:var(--bg-surface);border-radius:2px;outline:none;cursor:pointer}
 .volume-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer}
@@ -336,6 +343,10 @@ input{font-family:inherit;outline:none;border:none}
     .history-tabs{gap:4px}
     .history-tab{padding:6px 4px;font-size:.72rem}
 }
+
+/* PINK ICON SVGS */
+.pink-icon.play-icon{width:22px;height:24px;display:block}
+.pink-icon.pause-icon{width:18px;height:22px;display:block}
 </style>
 </head>
 <body>
@@ -354,7 +365,7 @@ input{font-family:inherit;outline:none;border:none}
     </div>
     <div class="header-actions">
         <div class="mode-toggle active" id="audioModeToggle" title="声音模式"><div class="toggle-dot"></div><span>纯音频</span></div>
-        <button class="btn header-collapse-btn" id="headerToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏"><i class="fas fa-chevron-left" id="headerToggleIcon"></i></button>
+        <button class="btn header-collapse-btn" id="headerToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏">切换</button>
         <button class="btn btn-ghost" onclick="openHistory()" title="搜索与播放履历"><i class="fas fa-clock-rotate-left"></i> <span class="btn-label">履历</span></button>
         <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> <span class="btn-label">添加</span></button>
     </div>
@@ -386,7 +397,7 @@ input{font-family:inherit;outline:none;border:none}
         </div>
         <div class="video-list" id="videoList"></div>
     </aside>
-    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏"><i class="fas fa-chevron-left" id="toggleIcon"></i></button>
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏">切换</button>
 
     <main class="player-area">
         <div class="youtube-player-wrap"><div id="youtube-player"></div></div>
@@ -409,7 +420,9 @@ input{font-family:inherit;outline:none;border:none}
                 <img id="albumArtImg" src="" alt="">
                 <div class="album-art-overlay"></div>
                 <div class="play-overlay">
-                    <button class="play-overlay-btn" onclick="togglePlay()"><i class="fas fa-play" id="overlayPlayIcon"></i></button>
+                    <button class="play-overlay-btn" id="overlayPlayBtn" onclick="togglePlay()" title="播放/暂停">
+                        <span class="pink-icon play-icon" id="overlayPinkIcon"></span>
+                    </button>
                 </div>
             </div>
             <div class="track-info">
@@ -427,7 +440,9 @@ input{font-family:inherit;outline:none;border:none}
             </div>
             <div class="controls">
                 <button class="ctrl-btn" onclick="prevVideo()" title="上一首"><i class="fas fa-step-backward"></i></button>
-                <button class="ctrl-btn play-main" onclick="togglePlay()" title="播放/暂停"><i class="fas fa-play" id="mainPlayIcon"></i></button>
+                <button class="ctrl-btn play-main" id="mainPlayBtn" onclick="togglePlay()" title="播放/暂停">
+                    <span class="pink-icon play-icon" id="mainPinkIcon"></span>
+                </button>
                 <button class="ctrl-btn" onclick="nextVideo()" title="下一首"><i class="fas fa-step-forward"></i></button>
                 <div class="volume-control">
                     <i class="fas fa-volume-high" id="volIcon" style="color:var(--text-muted);font-size:0.82rem"></i>
@@ -526,35 +541,29 @@ let activeHistoryType = 'search';
 const DEFAULT_SEARCHES = ['抖音歌曲','纯音乐','Piano','古典音乐','Lofi'];
 const WORKER_API_URL = 'https://soundflow-search.zhyxgs.workers.dev';
 
-// ===================== DEMO DATABASE =====================
-const demoDatabase = [
-    { id:'YQHsXMglC9A', title:'Lofi Hip Hop Radio - Beats to Relax/Study', channel:'Lofi Girl', views:'780M', duration:'', thumb:'https://img.youtube.com/vi/YQHsXMglC9A/hqdefault.jpg' },
-    { id:'dQw4w9WgXcQ', title:'Rick Astley - Never Gonna Give You Up', channel:'Rick Astley', views:'1.6B', duration:'3:33', thumb:'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg' },
-    { id:'9bZkp7q19f0', title:'PSY - GANGNAM STYLE', channel:'officialpsy', views:'4.8B', duration:'4:13', thumb:'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg' },
-    { id:'kJQP7kiw5Fk', title:'Luis Fonsi - Despacito ft. Daddy Yankee', channel:'LuisFonsiVEVO', views:'8.2B', duration:'4:48', thumb:'https://img.youtube.com/vi/kJQP7kiw5Fk/hqdefault.jpg' },
-    { id:'RgKAFK5djSk', title:'Wiz Khalifa - See You Again ft. Charlie Puth', channel:'WizKhalifaVEVO', views:'6.1B', duration:'3:52', thumb:'https://img.youtube.com/vi/RgKAFK5djSk/hqdefault.jpg' },
-    { id:'fJ9rUzSTc1U', title:'Queen - Bohemian Rhapsody', channel:'QueenVEVO', views:'1.7B', duration:'5:55', thumb:'https://img.youtube.com/vi/fJ9rUzSTc1U/hqdefault.jpg' },
-    { id:'OPf0YbXqDm0', title:'Mark Ronson - Uptown Funk ft. Bruno Mars', channel:'MarkRonsonVEVO', views:'4.6B', duration:'4:30', thumb:'https://img.youtube.com/vi/OPf0YbXqDm0/hqdefault.jpg' },
-    { id:'JB3L0HhM2F4', title:'Pentatonix - Daft Punk', channel:'Pentatonix', views:'332M', duration:'4:12', thumb:'https://img.youtube.com/vi/JB3L0HhM2F4/hqdefault.jpg' },
-    { id:'JDHpUfk8m4o', title:'Alan Walker - Faded', channel:'walkervibe', views:'3.5B', duration:'3:32', thumb:'https://img.youtube.com/vi/JDHpUfk8m4o/hqdefault.jpg' },
-    { id:'k2qg9SvK4Lw', title:'Maroon 5 - Sugar', channel:'Maroon5VEVO', views:'3.7B', duration:'3:56', thumb:'https://img.youtube.com/vi/k2qg9SvK4Lw/hqdefault.jpg' },
-    { id:'09R8_2nJtjg', title:'The Weeknd - Blinding Lights', channel:'theweeknd', views:'3.4B', duration:'3:20', thumb:'https://img.youtube.com/vi/09R8_2nJtjg/hqdefault.jpg' },
-    { id:'JGwWNGJdvx8', title:'Ed Sheeran - Shape of You', channel:'EdSheeran', views:'6.1B', duration:'3:53', thumb:'https://img.youtube.com/vi/JGwWNGJdvx8/hqdefault.jpg' },
-    { id:'AJtDXIazrMo', title:'Imagine Dragons - Believer', channel:'ImagineDragonsVEVO', views:'2.5B', duration:'3:24', thumb:'https://img.youtube.com/vi/AJtDXIazrMo/hqdefault.jpg' },
-    { id:'2Vv-BfVoq4g', title:'James Arthur - Say You Won\'t Let Go', channel:'JamesArthurVEVO', views:'1.8B', duration:'4:01', thumb:'https://img.youtube.com/vi/2Vv-BfVoq4g/hqdefault.jpg' },
-    { id:'nfs8NYh7iUU', title:'Niall Horan - This Town', channel:'NiallHoranVEVO', views:'420M', duration:'3:51', thumb:'https://img.youtube.com/vi/nfs8NYh7iUU/hqdefault.jpg' },
-    { id:'pKd0RZw7Oa8', title:'Macklemore - Thrift Shop', channel:'Macklemore', views:'1.4B', duration:'3:47', thumb:'https://img.youtube.com/vi/pKd0RZw7Oa8/hqdefault.jpg' },
-    { id:'Hq5rPLFc5mc', title:'The Chainsmokers - Roses', channel:'TheChainsmokers', views:'2.1B', duration:'3:43', thumb:'https://img.youtube.com/vi/Hq5rPLFc5mc/hqdefault.jpg' },
-    { id:'8EJ3zbOM7S8', title:'Kygo - Higher Love', channel:'Kygo', views:'890M', duration:'3:35', thumb:'https://img.youtube.com/vi/8EJ3zbOM7S8/hqdefault.jpg' },
-    { id:'fRhvgzhRcG4', title:'Sam Smith - Stay With Me', channel:'SamSmith', views:'2.4B', duration:'2:52', thumb:'https://img.youtube.com/vi/fRhvgzhRcG4/hqdefault.jpg' },
-    { id:'2CeWKEa9Bko', title:'Adele - Hello', channel:'AdeleVEVO', views:'2.9B', duration:'4:55', thumb:'https://img.youtube.com/vi/2CeWKEa9Bko/hqdefault.jpg' },
-    { id:'YzHs7Kaiazo', title:'Taylor Swift - Blank Space', channel:'TaylorSwiftVEVO', views:'2.2B', duration:'3:51', thumb:'https://img.youtube.com/vi/YzHs7Kaiazo/hqdefault.jpg' },
-    { id:'e-ORHrPl1U', title:'Bruno Mars - Just the Way You Are', channel:'BrunoMarsVEVO', views:'2.1B', duration:'3:41', thumb:'https://img.youtube.com/vi/e-ORHrPl1U/hqdefault.jpg' },
-    { id:'C4BLV2jQH2M', title:'Shawn Mendes - Stitches', channel:'ShawnMendesVEVO', views:'1.7B', duration:'3:24', thumb:'https://img.youtube.com/vi/C4BLV2jQH2M/hqdefault.jpg' },
-    { id:'p7YXFtk7OdU', title:'Charlie Puth - Attention', channel:'CharliexCX', views:'1.6B', duration:'3:36', thumb:'https://img.youtube.com/vi/p7YXFtk7OdU/hqdefault.jpg' },
-    { id:'tgbNymZ7vqY', title:'Eminem - Love The Way You Lie', channel:'EminemVEVO', views:'2.0B', duration:'4:23', thumb:'https://img.youtube.com/vi/tgbNymZ7vqY/hqdefault.jpg' },
-    { id:'RgKAFK5djSk', title:'Charlie Puth - See You Again', channel:'WizKhalifaVEVO', views:'6.1B', duration:'3:52', thumb:'https://img.youtube.com/vi/RgKAFK5djSk/hqdefault.jpg' },
-];
+// ===================== PINK ICON TEMPLATES =====================
+function playIconSVG() {
+    return '<svg class="pink-icon play-icon" viewBox="0 0 24 27" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.5 0.5L1 14.5L1 0.5Z" fill="#ec4899" stroke="#ec4899" stroke-width="0.5" stroke-linejoin="round"/></svg>';
+}
+function pauseIconSVG() {
+    return '<svg class="pink-icon pause-icon" viewBox="0 0 18 22" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="5" height="20" rx="1.5" fill="#ec4899"/><rect x="12" y="1" width="5" height="20" rx="1.5" fill="#ec4899"/></svg>';
+}
+
+function updatePinkIcons(playing) {
+    const playIcon = playIconSVG();
+    const pauseIcon = pauseIconSVG();
+    // Album art overlay button
+    const overlayBtn = document.getElementById('overlayPlayBtn');
+    const overlayIcon = document.getElementById('overlayPinkIcon');
+    if (overlayIcon) overlayIcon.outerHTML = playing ? pauseIcon : playIcon;
+    // Main control button
+    const mainBtn = document.getElementById('mainPlayBtn');
+    const mainIcon = document.getElementById('mainPinkIcon');
+    if (mainIcon) mainIcon.outerHTML = playing ? pauseIcon : playIcon;
+    // Update now playing bar
+    const npBtn = document.getElementById('npPlayBtn');
+    if (npBtn) npBtn.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+}
 
 // ===================== SEARCH =====================
 function onSearchInput(value) {
@@ -702,7 +711,7 @@ function renderSearchResults(results, query) {
     if (!results || results.length === 0) { showSearchResultsEmpty(query); updateScrollHint(); return; }
     let html = `<div class="search-results-header">
         <span class="results-label">找到 <span class="count">${results.length}</span> 个搜索结果</span>
-        <button class="results-collapse-btn" id="resultsCollapseBtn" onclick="toggleSearchResults()" title="收起搜索结果"><i class="fas fa-chevron-up"></i></button>
+        <button class="results-collapse-btn" id="resultsCollapseBtn" onclick="toggleSearchResults()" title="收起搜索结果">收起</button>
         <div class="results-actions"><button class="add-all-btn" onclick="addAllSearchResults()">全部添加</button></div>
     </div>`;
     results.forEach((video, idx) => {
@@ -744,7 +753,7 @@ function setSearchResultsCollapsed(collapsed) {
     const hint = document.getElementById('scrollHint');
     if (w) w.classList.toggle('search-collapsed', collapsed);
     if (hint) hint.classList.remove('visible');
-    if (b) { b.innerHTML = '<i class="fas '+(collapsed?'fa-chevron-down':'fa-chevron-up')+'"></i>'; b.title = collapsed ? '展开搜索结果' : '收起搜索结果'; }
+    if (b) { b.textContent = collapsed ? '展开' : '收起'; b.title = collapsed ? '展开搜索结果' : '收起搜索结果'; }
     if (!collapsed) updateScrollHint();
 }
 function toggleSearchResults(){setSearchResultsCollapsed(!searchResultsCollapsed);}
@@ -870,6 +879,8 @@ function onPlayerReady(event) {
     createVisualizer(); loadFromStorage();
     if (videoList.length === 0) videoList = [...defaultVideos];
     renderVideoList(); bindScrollHint(); renderRecentSearches();
+    // 初始化粉色图标
+    updatePinkIcons(false);
 }
 
 function onPlayerError(event) {
@@ -882,8 +893,10 @@ function onPlayerStateChange(event) {
     if (event.data === YT.PlayerState.PLAYING) {
         isPlaying = true; videoLoaded = true; playCount++; updatePlayUI(); startProgressUpdater(); showNwPBar(); updateStats(); startViz();
         if (currentIndex >= 0 && videoList[currentIndex]) { totalPlayTime += 1; saveToStorage(); }
+        updatePinkIcons(true);
     } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
         isPlaying = false; updatePlayUI(); stopProgressUpdater(); stopViz();
+        updatePinkIcons(false);
         if (event.data === YT.PlayerState.ENDED) setTimeout(() => nextVideo(), 1500);
     } else if (event.data === YT.PlayerState.CUED) {
         videoLoaded = true;
@@ -927,7 +940,11 @@ function stopProgressUpdater() { if (progressInterval) { clearInterval(progressI
 function updateProgress() { if (!player || !playerReady || currentIndex < 0) return; try { const current = player.getCurrentTime() || 0; const duration = player.getDuration() || 0; if (duration > 0) videoDuration = duration; const percent = duration > 0 ? (current / duration) * 100 : 0; document.getElementById('currentTime').textContent = formatTime(current); document.getElementById('totalTime').textContent = formatTime(duration); document.getElementById('progressFill').style.width = percent + '%'; document.getElementById('npCurrent').textContent = formatTime(current); document.getElementById('npTotal').textContent = formatTime(duration); document.getElementById('npProgressFill').style.width = percent + '%'; const savedPerHour = (2500 - 128) * 0.001; const savedMB = totalPlayTime > 0 ? totalPlayTime * (savedPerHour / 3600) : 0; document.getElementById('dataSaved').textContent = formatBytes(savedMB); document.getElementById('welcomeSaved').textContent = formatBytes(savedMB); } catch(e) {} }
 
 // ===================== UI UPDATES =====================
-function updatePlayUI() { const cls = isPlaying ? 'fas fa-pause' : 'fas fa-play'; document.getElementById('mainPlayIcon').className = cls; document.getElementById('overlayPlayIcon').className = cls; document.getElementById('npPlayBtn').innerHTML = `<i class="${cls}"></i>`; }
+function updatePlayUI() {
+    const cls = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+    const npBtn = document.getElementById('npPlayBtn');
+    if (npBtn) npBtn.innerHTML = `<i class="${cls}"></i>`;
+}
 function updatePlayerUI(video) { document.getElementById('trackTitle').textContent = video.title; document.getElementById('trackChannel').textContent = video.channel; const img = document.getElementById('albumArtImg'); img.src = `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`; img.onerror = () => { img.src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`; }; document.getElementById('npThumb').src = `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`; document.getElementById('npTitle').textContent = video.title; document.getElementById('npChannel').textContent = video.channel; updatePlayUI(); }
 function showNwPBar() { setTimeout(() => document.getElementById('nowPlayingBar').classList.add('show'), 100); }
 
@@ -1011,7 +1028,6 @@ function renderHistory(type) {
     const clearText = document.getElementById('clearHistoryText');
 
     if (type === 'playlist') {
-        // 播放列表：显示清空按钮
         actions.classList.remove('hidden');
         clearBtn.className = 'btn btn-danger-ghost';
         clearText.textContent = '清空播放列表';
@@ -1021,7 +1037,6 @@ function renderHistory(type) {
         return;
     }
 
-    // 其他履历：显示清空按钮
     actions.classList.remove('hidden');
     clearBtn.className = 'btn btn-danger-ghost';
     clearText.textContent = type === 'search' ? '清空搜索履历' : '清空播放履历';
