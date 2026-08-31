@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoundFlow - 纯音频流媒体播放器</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+    --bg-primary:#0a0a0f;--bg-secondary:#12121a;--bg-surface:#1a1a2e;
+    --bg-hover:#252540;--text-primary:#ffffff;--text-secondary:#a0a0b8;
+    --text-muted:#6c6c80;--accent-1:#7c3aed;--accent-2:#ec4899;
+    --accent-gradient:linear-gradient(135deg,#7c3aed,#ec4899);
+    --success:#22c55e;--warning:#f59e0b;--danger:#ef4444;
+    --border:#2a2a40;--radius:12px;--radius-sm:8px;
+    --shadow:0 8px 32px rgba(0,0,0,0.4)
+}
+html{font-size:16px}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;overflow-x:hidden;line-height:1.5}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;outline:none}
+input{font-family:inherit;outline:none;border:none}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
+
+/* HEADER */
+.header{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,15,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:10px}
+.logo{display:flex;align-items:center;gap:8px;font-size:1.2rem;font-weight:700}
+.logo-icon{width:32px;height:32px;background:var(--accent-gradient);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:0.95rem}
+.logo span{background:var(--accent-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-stats{display:flex;align-items:center;gap:14px}
+.stat-item{display:flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--text-secondary)}
+.stat-item i{color:var(--accent-1);font-size:0.82rem}
+.stat-item .saved{color:var(--success);font-weight:600}
+.header-actions{display:flex;align-items:center;gap:6px}
+.btn{padding:6px 12px;border-radius:var(--radius-sm);font-size:0.8rem;font-weight:500;transition:var(--transition);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.btn-primary{background:var(--accent-gradient);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,58,237,0.4)}
+.btn-ghost{background:var(--bg-surface);color:var(--text-secondary);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-icon{width:34px;height:34px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:0.95rem;color:var(--text-secondary);transition:var(--transition);flex-shrink:0}
+.btn-icon:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-sm{padding:4px 9px;font-size:0.76rem}
+
+/* APP */
+.app{display:flex;height:100vh;padding-top:60px}
+.sidebar{width:390px;min-width:390px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:var(--transition);position:relative}
+.sidebar.collapsed{width:0;min-width:0;border:none}
+.sidebar-toggle{position:absolute;top:68px;left:390px;z-index:90;width:24px;height:48px;background:var(--bg-surface);border:1px solid var(--border);border-left:none;border-radius:0 var(--radius-sm) var(--radius-sm) 0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:var(--transition);font-size:0.65rem}
+.sidebar.collapsed~.sidebar-toggle{left:0}
+.sidebar-toggle:hover{color:var(--text-primary);background:var(--bg-hover)}
+
+/* SIDEBAR HEADER */
+.sidebar-header{padding:12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.search-box{display:flex;align-items:center;background:var(--bg-surface);border:2px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;gap:6px;transition:var(--transition);position:relative}
+.search-box:focus-within{border-color:var(--accent-1);box-shadow:0 0 0 3px rgba(124,58,237,0.15)}
+.search-box i{color:var(--text-muted);font-size:0.85rem;flex-shrink:0}
+.search-box input{flex:1;background:none;color:var(--text-primary);font-size:0.88rem;padding:9px 0}
+.search-box input::placeholder{color:var(--text-muted)}
+.search-actions{display:flex;gap:5px}
+.api-section{display:flex;gap:5px;align-items:center}
+.api-input{flex:1;background:var(--bg-primary);border:1px solid var(--border);border-radius:5px;padding:4px 8px;color:var(--text-primary);font-size:0.72rem}
+.api-input::placeholder{color:var(--text-muted);font-size:0.7rem}
+.api-status{font-size:0.68rem;padding:2px 7px;border-radius:9px;font-weight:500;white-space:nowrap}
+.api-status.ok{background:rgba(34,197,94,0.15);color:var(--success)}
+.api-status.off{background:rgba(245,158,11,0.15);color:var(--warning)}
+
+/* SEARCH BANNER */
+.search-banner{margin:0 12px 8px;padding:12px 14px;background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(236,72,153,0.06));border:1px solid rgba(124,58,237,0.2);border-radius:var(--radius-sm);animation:fadeInUp 0.3s ease-out}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.search-banner-top{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.search-banner-top i{color:var(--accent-1);font-size:1rem}
+.search-banner-top span{font-size:0.78rem;color:var(--text-secondary)}
+.search-banner-query{font-size:0.9rem;font-weight:600;color:var(--text-primary);margin-bottom:8px;word-break:break-all}
+.search-banner-query em{color:var(--accent-1);font-style:normal}
+.youtube-search-btn{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:0.82rem;cursor:pointer;transition:var(--transition);text-decoration:none}
+.youtube-search-btn:hover{background:var(--bg-hover);border-color:var(--accent-1);transform:translateY(-1px)}
+.youtube-search-btn .yt-left{display:flex;align-items:center;gap:6px;font-weight:600}
+.youtube-search-btn .yt-left .yt-red{color:#ff0000;font-size:1.1rem}
+.youtube-search-btn .arrow{margin-left:auto;color:var(--text-muted);transition:var(--transition)}
+.youtube-search-btn:hover .arrow{color:var(--accent-1);transform:translateX(3px)}
+.search-banner-footer{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.search-banner-footer small{font-size:0.7rem;color:var(--text-muted)}
+.search-banner-footer a{font-size:0.72rem;color:var(--accent-1);cursor:pointer}
+.search-banner-footer a:hover{text-decoration:underline}
+
+/* SCROLL HINT */
+.scroll-hint{display:none;padding:4px 16px 6px;font-size:0.68rem;color:var(--text-muted);text-align:center;align-items:center;justify-content:center;gap:4px}
+.scroll-hint.visible{display:flex}
+.scroll-hint i{font-size:0.8rem;animation:scrollHint 1.5s ease-in-out infinite}
+@keyframes scrollHint{0%,100%{transform:translateY(0);opacity:0.5}50%{transform:translateY(3px);opacity:1}}
+
+/* SEARCH RESULTS - 带滚动条的可滑动区域 */
+.search-results-wrapper{flex:0 0 auto;max-height:280px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative}
+.search-results-wrapper::-webkit-scrollbar{width:4px}
+.search-results-wrapper::-webkit-scrollbar-track{background:transparent}
+.search-results-wrapper::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.search-results-wrapper::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
+/* Firefox */
+.search-results-wrapper{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+
+.search-results-header{padding:8px 14px 4px;font-size:0.76rem;color:var(--text-muted);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg-secondary);z-index:2;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:2px}
+.search-results-header .count{color:var(--accent-1);font-weight:600}
+.search-result-card{display:flex;gap:8px;padding:8px 14px;cursor:pointer;transition:var(--transition);border-bottom:1px solid var(--border);margin:0 2px}
+.search-result-card:hover{background:var(--bg-hover)}
+.sr-thumb{width:120px;min-width:120px;height:68px;border-radius:5px;position:relative;overflow:hidden;background:var(--bg-primary);flex-shrink:0}
+.sr-thumb img{width:100%;height:100%;object-fit:cover}
+.sr-thumb .sr-duration{position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.85);color:#fff;font-size:0.65rem;padding:1px 4px;border-radius:2px;font-weight:500}
+.sr-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.sr-title{font-size:0.82rem;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-channel{font-size:0.72rem;color:var(--text-muted)}
+.sr-add-btn{width:28px;height:28px;border-radius:50%;background:var(--accent-gradient);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.72rem;flex-shrink:0;align-self:center;transition:var(--transition);box-shadow:0 2px 8px rgba(124,58,237,0.3)}
+.sr-add-btn:hover{transform:scale(1.15);box-shadow:0 4px 12px rgba(124,58,237,0.5)}
+.search-loading{padding:24px;text-align:center;color:var(--text-muted);font-size:0.82rem}
+.search-loading .spinner{display:inline-block;width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--accent-1);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.search-empty{padding:24px;text-align:center;color:var(--text-muted);font-size:0.82rem}
+.search-empty i{font-size:1.8rem;display:block;margin-bottom:6px;opacity:0.3}
+
+/* QUICK CHIPS */
+.quick-chips{display:flex;gap:5px;padding:2px 12px 6px;flex-wrap:wrap}
+.chip{padding:3px 9px;background:var(--bg-surface);border:1px solid var(--border);border-radius:11px;font-size:0.7rem;color:var(--text-secondary);cursor:pointer;transition:var(--transition);white-space:nowrap}
+.chip:hover{border-color:var(--accent-1);color:var(--text-primary);background:rgba(124,58,237,0.08)}
+
+/* VIDEO LIST */
+.video-list{flex:1;overflow-y:auto;padding:8px}
+.video-item{display:flex;gap:8px;padding:7px;border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);margin-bottom:3px;position:relative}
+.video-item:hover{background:var(--bg-hover)}
+.video-item.active{background:var(--bg-surface);border:1px solid var(--border)}
+.video-item.active::before{content:'';position:absolute;left:0;top:5px;bottom:5px;width:3px;background:var(--accent-gradient);border-radius:0 2px 2px 0}
+.thumb{width:120px;min-width:120px;height:68px;border-radius:5px;position:relative;overflow:hidden;background:var(--bg-primary);flex-shrink:0}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb .duration{position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.85);color:#fff;font-size:0.65rem;padding:1px 4px;border-radius:2px;font-weight:500}
+.thumb .audio-badge{position:absolute;top:2px;left:2px;background:rgba(124,58,237,0.92);color:#fff;font-size:0.58rem;padding:1px 4px;border-radius:2px;font-weight:600;display:flex;align-items:center;gap:2px}
+.video-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between}
+.video-title{font-size:0.82rem;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--text-primary)}
+.video-channel{font-size:0.72rem;color:var(--text-muted);margin-top:2px}
+.video-meta{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+.video-views{font-size:0.7rem;color:var(--text-muted)}
+.video-remove{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.7);color:#fff;font-size:0.55rem;display:none;align-items:center;justify-content:center;z-index:2}
+.video-item:hover .video-remove{display:flex}
+.video-remove:hover{background:var(--danger)}
+.list-empty{padding:24px 16px;text-align:center;color:var(--text-muted);font-size:0.85rem}
+.list-empty i{font-size:1.8rem;display:block;margin-bottom:8px;opacity:0.4}
+
+/* PLAYER AREA */
+.player-area{flex:1;display:flex;flex-direction:column;position:relative;background:var(--bg-primary);overflow:hidden}
+
+/* YOUTUBE PLAYER - 确保在视口内且能正常播放 */
+.youtube-player-wrap{
+    position:absolute;
+    width:200px;
+    height:200px;
+    /* 保留在视口内，避免浏览器停止渲染屏幕外播放器 */
+    bottom:54px;
+    right:0;
+    z-index:1;
+    opacity:0.001;
+    clip-path:inset(49%);
+    pointer-events:none;
+    overflow:hidden;
+}
+.youtube-player-wrap iframe{width:100%;height:100%;border:none}
+
+/* WELCOME */
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;position:relative;z-index:2;padding:24px}
+.welcome-icon{width:85px;height:85px;background:var(--accent-gradient);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.welcome h2{font-size:1.6rem;background:var(--accent-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.welcome p{color:var(--text-muted);font-size:0.9rem;text-align:center;max-width:400px;line-height:1.5}
+.equalizer{display:flex;align-items:flex-end;gap:4px;height:45px}
+.eq-bar{width:5px;background:var(--accent-gradient);border-radius:3px;animation:eqBounce 0.8s ease-in-out infinite alternate}
+.eq-bar:nth-child(1){height:16px;animation-delay:0s}
+.eq-bar:nth-child(2){height:32px;animation-delay:0.1s}
+.eq-bar:nth-child(3){height:26px;animation-delay:0.2s}
+.eq-bar:nth-child(4){height:42px;animation-delay:0.3s}
+.eq-bar:nth-child(5){height:20px;animation-delay:0.4s}
+.eq-bar:nth-child(6){height:36px;animation-delay:0.5s}
+.eq-bar:nth-child(7){height:28px;animation-delay:0.6s}
+@keyframes eqBounce{0%{transform:scaleY(0.4)}100%{transform:scaleY(1)}}
+.welcome-info-badges{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.data-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:18px;font-size:0.78rem;font-weight:500}
+.data-badge.saved{background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:var(--success)}
+.data-badge.tip{background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);color:var(--accent-1)}
+.hidden{display:none!important}
+
+/* PLAYER SCREEN */
+.player-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;position:relative;z-index:2;gap:24px}
+.album-art{width:240px;height:240px;border-radius:var(--radius);position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(124,58,237,0.3);animation:albumGlow 3s ease-in-out infinite}
+@keyframes albumGlow{0%,100%{box-shadow:0 20px 60px rgba(124,58,237,0.3)}50%{box-shadow:0 20px 80px rgba(236,72,153,0.3)}}
+.album-art img{width:100%;height:100%;object-fit:cover}
+.album-art-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,10,15,0.8),transparent 60%)}
+.album-art .play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);opacity:0;transition:var(--transition)}
+.album-art:hover .play-overlay{opacity:1}
+.play-overlay-btn{width:56px;height:56px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--bg-primary);box-shadow:0 8px 24px rgba(0,0,0,0.3);transition:var(--transition)}
+.play-overlay-btn:hover{transform:scale(1.1)}
+.track-info{text-align:center}
+.track-title{font-size:1.4rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:460px}
+.track-channel{font-size:0.9rem;color:var(--text-muted)}
+.data-saved-badge{display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:var(--success);padding:4px 12px;border-radius:18px;font-size:0.78rem;font-weight:500}
+
+/* VISUALIZER */
+.visualizer{display:flex;align-items:flex-end;gap:3px;height:60px;padding:0 14px}
+.viz-bar{width:6px;border-radius:3px;background:var(--accent-gradient);animation:vizBounce 1s ease-in-out infinite alternate}
+.viz-bar:nth-child(odd){animation-duration:0.6s}
+.viz-bar:nth-child(3n){animation-duration:0.8s}
+@keyframes vizBounce{0%{height:10%}100%{height:90%}}
+
+/* PROGRESS */
+.progress-section{padding:0 24px;width:100%;max-width:500px}
+.progress-time{display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text-muted);margin-bottom:4px}
+.progress-track{width:100%;height:5px;background:var(--bg-surface);border-radius:3px;cursor:pointer;position:relative;overflow:hidden;transition:height 0.15s}
+.progress-track:hover{height:7px}
+.progress-buffered{position:absolute;top:0;left:0;height:100%;background:rgba(255,255,255,0.1);border-radius:3px}
+.progress-fill{height:100%;background:var(--accent-gradient);border-radius:3px;position:relative;transition:width 0.1s linear;width:0%}
+.progress-fill::after{content:'';position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:11px;height:11px;background:#fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.15s}
+.progress-track:hover .progress-fill::after{opacity:1}
+
+/* CONTROLS */
+.controls{display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 0}
+.ctrl-btn{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:1rem;transition:var(--transition)}
+.ctrl-btn:hover{color:var(--text-primary);background:var(--bg-hover)}
+.ctrl-btn.play-main{width:52px;height:52px;background:var(--text-primary);color:var(--bg-primary);font-size:1.2rem}
+.ctrl-btn.play-main:hover{transform:scale(1.08);box-shadow:0 4px 20px rgba(255,255,255,0.2)}
+.volume-control{display:flex;align-items:center;gap:5px;margin-left:14px}
+.volume-slider{-webkit-appearance:none;appearance:none;width:80px;height:4px;background:var(--bg-surface);border-radius:2px;outline:none;cursor:pointer}
+.volume-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer}
+.volume-slider::-moz-range-thumb{width:12px;height:12px;background:#fff;border-radius:50%;border:none;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer}
+.playback-speed{padding:3px 9px;background:var(--bg-surface);border-radius:11px;font-size:0.74rem;color:var(--text-secondary);cursor:pointer;border:1px solid var(--border);transition:var(--transition)}
+.playback-speed:hover{border-color:var(--accent-1);color:var(--text-primary)}
+
+/* NOW PLAYING BAR */
+.now-playing{position:absolute;bottom:0;left:0;right:0;z-index:50;background:rgba(18,18,26,0.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);padding:7px 14px;display:flex;align-items:center;gap:10px;transition:transform 0.3s;transform:translateY(100%)}
+.now-playing.show{transform:translateY(0)}
+.np-thumb{width:40px;height:40px;border-radius:5px;overflow:hidden;flex-shrink:0}
+.np-thumb img{width:100%;height:100%;object-fit:cover}
+.np-info{flex:1;min-width:0}
+.np-title{font-size:0.78rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np-channel{font-size:0.68rem;color:var(--text-muted)}
+.np-controls{display:flex;align-items:center;gap:5px}
+.np-progress{width:160px;display:flex;align-items:center;gap:5px}
+.np-time{font-size:0.68rem;color:var(--text-muted);white-space:nowrap}
+.np-progress .progress-track{height:3px}
+.np-progress .progress-fill{height:100%}
+.np-progress .progress-fill::after{display:none}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg-surface);border-radius:var(--radius);padding:22px;width:100%;max-width:440px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.modal h3{font-size:1.1rem;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:var(--transition)}
+.modal-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+.modal-input{width:100%;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text-primary);font-size:0.88rem;margin-bottom:6px}
+.modal-input:focus{border-color:var(--accent-1)}
+.modal-input::placeholder{color:var(--text-muted)}
+.modal-hint{font-size:0.76rem;color:var(--text-muted);margin-bottom:12px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.history-tabs{display:flex;gap:6px;margin-bottom:12px}
+.history-tab{flex:1;padding:8px;border-radius:7px;background:var(--bg-primary);color:var(--text-secondary);border:1px solid var(--border)}
+.history-tab.active{color:#fff;border-color:var(--accent-1);background:rgba(124,58,237,.18)}
+.history-list{max-height:360px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.history-item{display:flex;align-items:center;gap:9px;padding:8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:7px}
+.history-item img{width:64px;height:38px;object-fit:cover;border-radius:4px}
+.history-main{flex:1;min-width:0}.history-title{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.history-meta{font-size:.68rem;color:var(--text-muted)}
+.history-empty{padding:28px;text-align:center;color:var(--text-muted);font-size:.82rem}
+
+/* TOAST */
+.toast-container{position:fixed;top:72px;right:14px;z-index:300;display:flex;flex-direction:column;gap:5px;max-width:300px}
+.toast{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 14px;font-size:0.8rem;box-shadow:var(--shadow);animation:toastIn 0.3s ease-out;display:flex;align-items:center;gap:7px;min-width:200px}
+.toast.success{border-left:3px solid var(--success)}
+.toast.info{border-left:3px solid var(--accent-1)}
+.toast.warning{border-left:3px solid var(--warning)}
+.toast.error{border-left:3px solid var(--danger)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastOut{from{transform:translateX(0);opacity:1}to{transform:translateX(100%);opacity:0}}
+
+/* MODE TOGGLE */
+.mode-toggle{display:flex;align-items:center;gap:5px;padding:5px 10px;background:var(--bg-surface);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);border:1px solid var(--border)}
+.mode-toggle:hover{border-color:var(--accent-1)}
+.mode-toggle.active{border-color:var(--accent-1);background:rgba(124,58,237,0.1)}
+.toggle-dot{width:10px;height:10px;border-radius:50%;background:var(--text-muted);transition:var(--transition)}
+.mode-toggle.active .toggle-dot{background:var(--success);box-shadow:0 0 7px rgba(34,197,94,0.5)}
+.mode-toggle span{font-size:0.78rem;color:var(--text-secondary)}
+.mode-toggle.active span{color:var(--success)}
+
+/* FOOTER */
+.footer{position:absolute;bottom:52px;left:0;right:0;text-align:center;z-index:2;color:var(--text-muted);font-size:0.7rem;padding:5px}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+    .sidebar{width:100%;min-width:100%;position:absolute;left:0;top:60px;bottom:0;z-index:80}
+    .sidebar.collapsed{transform:translateX(-100%)}
+    .sidebar-toggle{display:none}
+    .header-stats{display:none}
+    .album-art{width:180px;height:180px}
+    .np-progress{display:none}
+    .progress-section{padding:0 14px}
+    .volume-control{display:none}
+    .visualizer{height:40px}
+    .sr-thumb{width:90px;min-width:90px;height:55px}
+    .youtube-player-wrap{width:200px;height:200px;bottom:50px;right:0}
+    .track-title{font-size:1.2rem}
+    .controls{gap:10px}
+    .ctrl-btn{width:36px;height:36px}
+    .ctrl-btn.play-main{width:44px;height:44px}
+    .search-results-wrapper{max-height:220px}
+}
+@media(max-width:480px){
+    .album-art{width:155px;height:155px}
+    .track-title{font-size:1.05rem}
+    .controls{gap:8px}
+    .ctrl-btn{width:34px;height:34px}
+    .ctrl-btn.play-main{width:42px;height:42px}
+    .thumb{width:90px;min-width:90px;height:55px}
+    .sr-thumb{width:80px;min-width:80px;height:50px}
+    .header{padding:0 10px}
+    .logo span{font-size:1.05rem}
+    .search-results-wrapper{max-height:180px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+    <div class="header-left">
+        <div class="logo">
+            <div class="logo-icon"><i class="fas fa-headphones"></i></div>
+            <span>SoundFlow</span>
+        </div>
+        <div class="header-stats">
+            <div class="stat-item"><i class="fas fa-wifi"></i> <span>估算节省</span> <span class="saved" id="dataSaved">0 MB</span></div>
+            <div class="stat-item"><i class="fas fa-music"></i> <span>播放</span> <span id="playingCount">0</span></div>
+        </div>
+    </div>
+    <div class="header-actions">
+        <div class="mode-toggle active" id="audioModeToggle" title="音频优先模式 (M)"><div class="toggle-dot"></div><span>纯音频</span></div>
+        <button class="btn btn-ghost" onclick="toggleSidebar()"><i class="fas fa-list"></i></button>
+        <button class="btn btn-ghost" onclick="openHistory()" title="搜索与播放履历"><i class="fas fa-clock-rotate-left"></i> <span class="btn-label">履历</span></button>
+        <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> <span class="btn-label">添加</span></button>
+    </div>
+</header>
+
+<!-- APP -->
+<div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="search-box" id="searchBox">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="搜索视频（支持任何语言）..." oninput="onSearchInput(this.value)" onkeydown="if(event.key==='Enter')doSearch()">
+                <button class="btn-icon" style="width:26px;height:26px;font-size:0.65rem;flex-shrink:0;display:none" id="clearBtn" onclick="clearSearch()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="quick-chips" id="quickChips"></div>
+            <div class="api-section">
+                <input class="api-input" id="apiKeyInput" type="password" placeholder="YouTube API Key（可选）" onkeydown="if(event.key==='Enter')saveApiKey()">
+                <button class="btn btn-sm btn-primary" onclick="saveApiKey()">保存</button>
+                <span class="api-status off" id="apiStatus">离线</span>
+            </div>
+        </div>
+
+        <!-- SEARCH BANNER: YouTube 结果链接 -->
+        <div class="search-banner hidden" id="searchBanner">
+            <div class="search-banner-top"><i class="fab fa-youtube"></i><span>YouTube 搜索结果</span></div>
+            <div class="search-banner-query" id="bannerQuery">关键词</div>
+            <a class="youtube-search-btn" id="youtubeSearchLink" href="#" target="_blank" rel="noopener">
+                <span class="yt-left"><span class="yt-red">▶</span> 在 YouTube 中查看搜索结果</span>
+                <i class="fas fa-arrow-right arrow"></i>
+            </a>
+            <div class="search-banner-footer"><small>将跳转至 YouTube 官网搜索页面</small><a onclick="copySearchUrl()">📋 复制链接</a></div>
+        </div>
+
+        <!-- SEARCH RESULTS - 带滚动条的滑动区域 -->
+        <div class="scroll-hint" id="scrollHint"><i class="fas fa-chevron-up"></i> 向上滑动查看更多结果 <i class="fas fa-chevron-up"></i></div>
+        <div class="search-results-wrapper" id="searchResultsWrapper">
+            <div id="searchResultsArea"></div>
+        </div>
+
+        <!-- VIDEO LIST -->
+        <div class="video-list" id="videoList"></div>
+    </aside>
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()"><i class="fas fa-chevron-right" id="toggleIcon"></i></button>
+
+    <!-- PLAYER AREA -->
+    <main class="player-area">
+        <!-- 隐藏的 YouTube 播放器 - 确保在视口内 -->
+        <div class="youtube-player-wrap">
+            <div id="youtube-player"></div>
+        </div>
+
+        <!-- WELCOME -->
+        <div class="welcome" id="welcomeScreen">
+            <div class="welcome-icon"><i class="fas fa-headphones"></i></div>
+            <h2>SoundFlow</h2>
+            <p>输入关键词即可显示搜索结果和封面图。加入播放列表后，画面会隐藏并在后台播放声音；搜索关键词与播放履历会保存在此浏览器中。</p>
+            <div class="equalizer">
+                <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+                <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+                <div class="eq-bar"></div><div class="eq-bar"></div>
+            </div>
+            <div class="welcome-info-badges">
+                <div class="data-badge saved"><i class="fas fa-shield-halved"></i> <span id="welcomeSaved">0 MB</span> 已节省流量</div>
+                <div class="data-badge tip"><i class="fas fa-bolt"></i> 请求最低画质以减少流量</div>
+            </div>
+        </div>
+
+        <!-- PLAYER SCREEN -->
+        <div class="player-screen hidden" id="playerScreen">
+            <div class="album-art" id="albumArt">
+                <img id="albumArtImg" src="" alt="">
+                <div class="album-art-overlay"></div>
+                <div class="play-overlay">
+                    <button class="play-overlay-btn" onclick="togglePlay()"><i class="fas fa-play" id="overlayPlayIcon"></i></button>
+                </div>
+            </div>
+            <div class="track-info">
+                <div class="track-title" id="trackTitle">视频标题</div>
+                <div class="track-channel" id="trackChannel">频道名称</div>
+                <div class="data-saved-badge"><i class="fas fa-shield-halved"></i> 后台声音模式 · 视频画面不显示</div>
+            </div>
+            <div class="visualizer" id="visualizer"></div>
+            <div class="progress-section">
+                <div class="progress-time"><span id="currentTime">0:00</span><span id="totalTime">0:00</span></div>
+                <div class="progress-track" id="progressTrack" onclick="seekVideo(event)">
+                    <div class="progress-buffered" id="bufferedBar"></div>
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="ctrl-btn" onclick="prevVideo()" title="上一首"><i class="fas fa-step-backward"></i></button>
+                <button class="ctrl-btn play-main" onclick="togglePlay()" title="播放/暂停"><i class="fas fa-play" id="mainPlayIcon"></i></button>
+                <button class="ctrl-btn" onclick="nextVideo()" title="下一首"><i class="fas fa-step-forward"></i></button>
+                <div class="volume-control">
+                    <i class="fas fa-volume-high" id="volIcon" style="color:var(--text-muted);font-size:0.82rem"></i>
+                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80" oninput="setVolume(this.value)">
+                </div>
+                <button class="playback-speed" id="speedBtn" onclick="cycleSpeed()">1.00x</button>
+            </div>
+        </div>
+
+        <!-- NOW PLAYING BAR -->
+        <div class="now-playing" id="nowPlayingBar">
+            <div class="np-thumb"><img id="npThumb" src="" alt=""></div>
+            <div class="np-info"><div class="np-title" id="npTitle">视频标题</div><div class="np-channel" id="npChannel">频道名称</div></div>
+            <div class="np-progress">
+                <span class="np-time" id="npCurrent">0:00</span>
+                <div class="progress-track" onclick="seekVideo(event)" style="width:160px"><div class="progress-fill" id="npProgressFill" style="width:0%"></div></div>
+                <span class="np-time" id="npTotal">0:00</span>
+            </div>
+            <div class="np-controls">
+                <button class="ctrl-btn" onclick="prevVideo()" style="width:28px;height:28px;font-size:0.7rem"><i class="fas fa-step-backward"></i></button>
+                <button class="ctrl-btn" onclick="togglePlay()" style="width:32px;height:32px;font-size:0.8rem" id="npPlayBtn"><i class="fas fa-play"></i></button>
+                <button class="ctrl-btn" onclick="nextVideo()" style="width:28px;height:28px;font-size:0.7rem"><i class="fas fa-step-forward"></i></button>
+            </div>
+        </div>
+        <div class="footer">SoundFlow · 使用 YouTube 后台音频流 · <a href="#" onclick="showToast('开源项目地址: github.com','info');return false">GitHub</a></div>
+    </main>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay" id="historyOverlay">
+    <div class="modal">
+        <h3>履历<button class="modal-close" onclick="closeHistory()"><i class="fas fa-times"></i></button></h3>
+        <div class="history-tabs">
+            <button class="history-tab active" id="searchHistoryTab" onclick="renderHistory('search')">搜索履历</button>
+            <button class="history-tab" id="playHistoryTab" onclick="renderHistory('play')">播放履历</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+        <div class="modal-actions"><button class="btn btn-ghost" onclick="clearCurrentHistory()"><i class="fas fa-trash"></i> 清空当前履历</button></div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h3>添加视频到播放列表<button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button></h3>
+        <div class="modal-hint">粘贴 YouTube 视频链接或视频 ID（支持 youtube.com 和 youtu.be 格式）</div>
+        <input class="modal-input" id="modalUrlInput" type="text" placeholder="https://www.youtube.com/watch?v=VIDEO_ID">
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+            <button class="btn btn-primary" onclick="addFromModal()"><i class="fas fa-plus"></i> 添加</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+// ===================== STATE =====================
+const defaultVideos = [
+    { id:'dQw4w9WgXcQ', title:'Never Gonna Give You Up', channel:'Rick Astley', views:'1.6B', duration:'3:33' },
+    { id:'9bZkp7q19f0', title:'PSY - GANGNAM STYLE', channel:'officialpsy', views:'4.8B', duration:'4:13' },
+    { id:'kJQP7kiw5Fk', title:'Luis Fonsi - Despacito ft. Daddy Yankee', channel:'LuisFonsiVEVO', views:'8.2B', duration:'4:48' },
+    { id:'RgKAFK5djSk', title:'Wiz Khalifa - See You Again ft. Charlie Puth', channel:'WizKhalifaVEVO', views:'6.1B', duration:'3:52' },
+    { id:'fJ9rUzSTc1U', title:'Queen - Bohemian Rhapsody', channel:'QueenVEVO', views:'1.7B', duration:'5:55' },
+    { id:'JB3L0HhM2F4', title:'Pentatonix - Daft Punk', channel:'Pentatonix', views:'332M', duration:'4:12' }
+];
+
+let videoList = [];
+let currentIndex = -1;
+let isPlaying = false;
+let player = null;
+let totalPlayTime = 0;
+let playCount = 0;
+let currentSpeed = 1.0;
+let speeds = [0.5,0.75,1.0,1.25,1.5,1.75,2.0];
+let progressInterval = null;
+let audioMode = true;
+let vizBars = [];
+let apiKey = '';
+let searchDebounceTimer = null;
+let currentSearchQuery = '';
+let searchResults = [];
+let playerReady = false;
+let videoDuration = 0;
+let videoLoaded = false;
+let searchHistory = [];
+let playHistory = [];
+let activeHistoryType = 'search';
+const DEFAULT_SEARCHES = ['抖音歌曲','纯音乐','Piano','古典音乐','Lofi'];
+const WORKER_API_URL = 'https://soundflow-search.REPLACE_WITH_SUBDOMAIN.workers.dev';
+
+// ===================== DEMO DATABASE =====================
+const demoDatabase = [
+    { id:'YQHsXMglC9A', title:'Lofi Hip Hop Radio - Beats to Relax/Study', channel:'Lofi Girl', views:'780M', duration:'', thumb:'https://img.youtube.com/vi/YQHsXMglC9A/hqdefault.jpg' },
+    { id:'dQw4w9WgXcQ', title:'Rick Astley - Never Gonna Give You Up', channel:'Rick Astley', views:'1.6B', duration:'3:33', thumb:'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg' },
+    { id:'9bZkp7q19f0', title:'PSY - GANGNAM STYLE', channel:'officialpsy', views:'4.8B', duration:'4:13', thumb:'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg' },
+    { id:'kJQP7kiw5Fk', title:'Luis Fonsi - Despacito ft. Daddy Yankee', channel:'LuisFonsiVEVO', views:'8.2B', duration:'4:48', thumb:'https://img.youtube.com/vi/kJQP7kiw5Fk/hqdefault.jpg' },
+    { id:'RgKAFK5djSk', title:'Wiz Khalifa - See You Again ft. Charlie Puth', channel:'WizKhalifaVEVO', views:'6.1B', duration:'3:52', thumb:'https://img.youtube.com/vi/RgKAFK5djSk/hqdefault.jpg' },
+    { id:'fJ9rUzSTc1U', title:'Queen - Bohemian Rhapsody', channel:'QueenVEVO', views:'1.7B', duration:'5:55', thumb:'https://img.youtube.com/vi/fJ9rUzSTc1U/hqdefault.jpg' },
+    { id:'OPf0YbXqDm0', title:'Mark Ronson - Uptown Funk ft. Bruno Mars', channel:'MarkRonsonVEVO', views:'4.6B', duration:'4:30', thumb:'https://img.youtube.com/vi/OPf0YbXqDm0/hqdefault.jpg' },
+    { id:'JB3L0HhM2F4', title:'Pentatonix - Daft Punk', channel:'Pentatonix', views:'332M', duration:'4:12', thumb:'https://img.youtube.com/vi/JB3L0HhM2F4/hqdefault.jpg' },
+    { id:'JDHpUfk8m4o', title:'Alan Walker - Faded', channel:'walkervibe', views:'3.5B', duration:'3:32', thumb:'https://img.youtube.com/vi/JDHpUfk8m4o/hqdefault.jpg' },
+    { id:'k2qg9SvK4Lw', title:'Maroon 5 - Sugar', channel:'Maroon5VEVO', views:'3.7B', duration:'3:56', thumb:'https://img.youtube.com/vi/k2qg9SvK4Lw/hqdefault.jpg' },
+    { id:'09R8_2nJtjg', title:'The Weeknd - Blinding Lights', channel:'theweeknd', views:'3.4B', duration:'3:20', thumb:'https://img.youtube.com/vi/09R8_2nJtjg/hqdefault.jpg' },
+    { id:'JGwWNGJdvx8', title:'Ed Sheeran - Shape of You', channel:'EdSheeran', views:'6.1B', duration:'3:53', thumb:'https://img.youtube.com/vi/JGwWNGJdvx8/hqdefault.jpg' },
+    { id:'AJtDXIazrMo', title:'Imagine Dragons - Believer', channel:'ImagineDragonsVEVO', views:'2.5B', duration:'3:24', thumb:'https://img.youtube.com/vi/AJtDXIazrMo/hqdefault.jpg' },
+    { id:'2Vv-BfVoq4g', title:'James Arthur - Say You Won\'t Let Go', channel:'JamesArthurVEVO', views:'1.8B', duration:'4:01', thumb:'https://img.youtube.com/vi/2Vv-BfVoq4g/hqdefault.jpg' },
+    { id:'nfs8NYh7iUU', title:'Niall Horan - This Town', channel:'NiallHoranVEVO', views:'420M', duration:'3:51', thumb:'https://img.youtube.com/vi/nfs8NYh7iUU/hqdefault.jpg' },
+    { id:'pKd0RZw7Oa8', title:'Macklemore - Thrift Shop', channel:'Macklemore', views:'1.4B', duration:'3:47', thumb:'https://img.youtube.com/vi/pKd0RZw7Oa8/hqdefault.jpg' },
+    { id:'Hq5rPLFc5mc', title:'The Chainsmokers - Roses', channel:'TheChainsmokers', views:'2.1B', duration:'3:43', thumb:'https://img.youtube.com/vi/Hq5rPLFc5mc/hqdefault.jpg' },
+    { id:'8EJ3zbOM7S8', title:'Kygo - Higher Love', channel:'Kygo', views:'890M', duration:'3:35', thumb:'https://img.youtube.com/vi/8EJ3zbOM7S8/hqdefault.jpg' },
+    { id:'fRhvgzhRcG4', title:'Sam Smith - Stay With Me', channel:'SamSmith', views:'2.4B', duration:'2:52', thumb:'https://img.youtube.com/vi/fRhvgzhRcG4/hqdefault.jpg' },
+    { id:'2CeWKEa9Bko', title:'Adele - Hello', channel:'AdeleVEVO', views:'2.9B', duration:'4:55', thumb:'https://img.youtube.com/vi/2CeWKEa9Bko/hqdefault.jpg' },
+    { id:'YzHs7Kaiazo', title:'Taylor Swift - Blank Space', channel:'TaylorSwiftVEVO', views:'2.2B', duration:'3:51', thumb:'https://img.youtube.com/vi/YzHs7Kaiazo/hqdefault.jpg' },
+    { id:'e-ORHrPl1U', title:'Bruno Mars - Just the Way You Are', channel:'BrunoMarsVEVO', views:'2.1B', duration:'3:41', thumb:'https://img.youtube.com/vi/e-ORHrPl1U/hqdefault.jpg' },
+    { id:'C4BLV2jQH2M', title:'Shawn Mendes - Stitches', channel:'ShawnMendesVEVO', views:'1.7B', duration:'3:24', thumb:'https://img.youtube.com/vi/C4BLV2jQH2M/hqdefault.jpg' },
+    { id:'p7YXFtk7OdU', title:'Charlie Puth - Attention', channel:'CharliexCX', views:'1.6B', duration:'3:36', thumb:'https://img.youtube.com/vi/p7YXFtk7OdU/hqdefault.jpg' },
+    { id:'tgbNymZ7vqY', title:'Eminem - Love The Way You Lie', channel:'EminemVEVO', views:'2.0B', duration:'4:23', thumb:'https://img.youtube.com/vi/tgbNymZ7vqY/hqdefault.jpg' },
+    { id:'RgKAFK5djSk', title:'Charlie Puth - See You Again', channel:'WizKhalifaVEVO', views:'6.1B', duration:'3:52', thumb:'https://img.youtube.com/vi/RgKAFK5djSk/hqdefault.jpg' },
+];
+
+// ===================== SEARCH (支持任何语言) =====================
+function onSearchInput(value) {
+    currentSearchQuery = value;
+    const clearBtn = document.getElementById('clearBtn');
+    clearBtn.style.display = value ? 'flex' : 'none';
+    clearTimeout(searchDebounceTimer);
+    if (!value || value.trim().length === 0) {
+        hideSearchBanner();
+        hideSearchResults();
+        return;
+    }
+    searchDebounceTimer = setTimeout(() => doSearch(), 300);
+}
+
+function doSearch() {
+    const query = currentSearchQuery.trim();
+    if (!query) return;
+    currentSearchQuery = query;
+    rememberSearch(query);
+    hideSearchBanner();
+    showSearchResultsLoading();
+    performLocalSearch(query);
+}
+
+// 通过同文件夹中的本机服务器读取 YouTube 搜索页，避免浏览器跨域限制
+async function performLocalSearch(query) {
+    try {
+        const local = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+        const apiBase = local ? '' : WORKER_API_URL;
+        if (apiBase.includes('REPLACE_WITH_SUBDOMAIN')) throw new Error('Cloudflare Worker地址尚未配置');
+        const resp = await fetch(`${apiBase}/api/search?q=${encodeURIComponent(query)}`, { cache:'no-store' });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+        const results = Array.isArray(data.items) ? data.items : [];
+        searchResults = results;
+        renderSearchResults(results, query);
+        if (!results.length) showToast('YouTube没有返回可显示的视频', 'warning');
+    } catch(e) {
+        console.warn('Local search failed:', e);
+        if (apiKey) {
+            showToast('本机搜索失败，正在改用 YouTube API', 'warning');
+            performApiSearch(query);
+        } else {
+            const area = document.getElementById('searchResultsArea');
+            area.innerHTML = `<div class="search-empty"><i class="fas fa-triangle-exclamation"></i>搜索服务器未连接<br><small>${escapeHtml(e.message || '请使用启动器重新打开程序')}</small></div>`;
+            showToast('请用「启动SoundFlow4c.bat」打开程序', 'error');
+        }
+    }
+}
+
+// 构建 YouTube 搜索 URL（使用 encodeURIComponent 确保任何语言都能正确编码）
+function getYouTubeSearchUrl(query) {
+    const encodedQuery = encodeURIComponent(query);
+    return `https://www.youtube.com/results?search_query=${encodedQuery}`;
+}
+
+function showSearchBanner(query) {
+    const banner = document.getElementById('searchBanner');
+    banner.classList.remove('hidden');
+    document.getElementById('bannerQuery').textContent = query;
+    const searchUrl = getYouTubeSearchUrl(query);
+    document.getElementById('youtubeSearchLink').href = searchUrl;
+    window._currentSearchUrl = searchUrl;
+}
+
+function hideSearchBanner() { document.getElementById('searchBanner').classList.add('hidden'); }
+
+function copySearchUrl() {
+    const url = window._currentSearchUrl || '';
+    if (!url) return;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => showToast('搜索链接已复制到剪贴板', 'success')).catch(() => fallbackCopy(url));
+    } else { fallbackCopy(url); }
+}
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast('搜索链接已复制到剪贴板', 'success'); }
+    catch(e) { showToast('复制失败，请手动复制', 'error'); }
+    document.body.removeChild(ta);
+}
+
+async function performApiSearch(query) {
+    try {
+        const params = new URLSearchParams({
+            part: 'snippet', q: query, type: 'video', maxResults: '10',
+            key: apiKey, regionCode: 'CN', videoCategoryId: '10'
+        });
+        const url = 'https://www.googleapis.com/youtube/v3/search?' + params.toString();
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('API error');
+        const data = await resp.json();
+        const results = (data.items || []).map(item => ({
+            id: item.id.videoId,
+            title: item.snippet.title,
+            channel: item.snippet.channelTitle,
+            views: '',
+            duration: parseDuration(item.contentDetails?.duration),
+            thumb: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || ''
+        }));
+        if (results.length > 0) { searchResults = results; renderSearchResults(results, currentSearchQuery); return; }
+    } catch(e) { console.warn('API search failed:', e); }
+    showSearchResultsEmpty(currentSearchQuery);
+}
+
+function parseDuration(iso) {
+    if (!iso) return '';
+    const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!m) return '';
+    const h = m[1] ? parseInt(m[1]) : 0;
+    const mi = m[2] ? parseInt(m[2]) : 0;
+    const s = m[3] ? parseInt(m[3]) : 0;
+    return (h ? h + ':' : '') + mi.toString().padStart(2,'0') + ':' + s.toString().padStart(2,'0');
+}
+
+function performDemoSearch(query) {
+    const q = query.toLowerCase();
+    const results = demoDatabase.filter(v =>
+        v.title.toLowerCase().includes(q) ||
+        v.channel.toLowerCase().includes(q) ||
+        v.id.toLowerCase().includes(q)
+    ).slice(0, 10);
+    searchResults = results;
+    renderSearchResults(results, currentSearchQuery);
+}
+
+// ===================== SEARCH RESULTS WITH SCROLL =====================
+function showSearchResultsLoading() {
+    const area = document.getElementById('searchResultsArea');
+    const wrapper = document.getElementById('searchResultsWrapper');
+    area.innerHTML = `<div class="search-loading"><div class="spinner"></div>正在搜索...</div>`;
+    wrapper.classList.remove('hidden');
+    updateScrollHint();
+}
+
+function hideSearchResults() {
+    document.getElementById('searchResultsArea').innerHTML = '';
+    document.getElementById('scrollHint').classList.remove('visible');
+}
+
+function showSearchResultsEmpty(query) {
+    const area = document.getElementById('searchResultsArea');
+    area.innerHTML = `<div class="search-empty"><i class="fas fa-search"></i>没有找到与"<strong>${escapeHtml(query)}</strong>"相关的视频</div>`;
+    updateScrollHint();
+}
+
+function updateScrollHint() {
+    const wrapper = document.getElementById('searchResultsWrapper');
+    const hint = document.getElementById('scrollHint');
+    // 在滚动事件后更新提示显示
+    setTimeout(() => {
+        if (wrapper.scrollHeight > wrapper.clientHeight) {
+            hint.classList.add('visible');
+        } else {
+            hint.classList.remove('visible');
+        }
+        // 监听滚动隐藏提示
+        wrapper.onscroll = () => {
+            if (wrapper.scrollTop > 10) hint.classList.remove('visible');
+            else hint.classList.add('visible');
+        };
+    }, 100);
+}
+
+function renderSearchResults(results, query) {
+    const area = document.getElementById('searchResultsArea');
+    if (!results || results.length === 0) { showSearchResultsEmpty(query); updateScrollHint(); return; }
+
+    let html = `<div class="search-results-header">找到 <span class="count">${results.length}</span> 个搜索结果</div>`;
+    results.forEach((video, idx) => {
+        const thumbSrc = video.thumb || `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`;
+        html += `
+        <div class="search-result-card" onclick="playVideoFromSearch(${idx})">
+            <div class="sr-thumb">
+                <img src="${thumbSrc}" alt="${escapeHtml(video.title)}" loading="lazy"
+                    onerror="this.style.display='none'">
+                ${video.duration ? `<span class="sr-duration">${video.duration}</span>` : ''}
+            </div>
+            <div class="sr-info">
+                <div class="sr-title">${highlightMatch(video.title, query)}</div>
+                <div class="sr-channel">${escapeHtml(video.channel)}</div>
+            </div>
+            <div class="sr-add-btn" onclick="event.stopPropagation();addSearchResult(${idx})" title="添加到播放列表"><i class="fas fa-plus"></i></div>
+        </div>`;
+    });
+    html += `<div style="padding:6px 14px;text-align:center;border-top:1px solid var(--border)">
+        <button class="btn btn-sm btn-ghost" onclick="addAllSearchResults()"><i class="fas fa-layer-group"></i> 将全部 ${results.length} 个结果加入列表</button>
+    </div>`;
+    area.innerHTML = html;
+    updateScrollHint();
+    // 重新绑定滚动事件
+    bindScrollHint();
+}
+
+function highlightMatch(text, query) {
+    if (!query) return escapeHtml(text);
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return escapeHtml(text);
+    const before = text.substring(0, idx);
+    const match = text.substring(idx, idx + query.length);
+    const after = text.substring(idx + query.length);
+    return `${escapeHtml(before)}<mark style="background:var(--accent-1);color:#fff;padding:0 2px;border-radius:2px">${escapeHtml(match)}</mark>${escapeHtml(after)}`;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function bindScrollHint() {
+    const wrapper = document.getElementById('searchResultsWrapper');
+    const hint = document.getElementById('scrollHint');
+    wrapper.onscroll = () => {
+        if (wrapper.scrollTop > 10) hint.classList.remove('visible');
+        else hint.classList.add('visible');
+    };
+}
+
+function playVideoFromSearch(idx) {
+    if (idx >= 0 && idx < searchResults.length) {
+        const video = searchResults[idx];
+        addVideoById(video.id, video.title, video.channel, video.duration);
+    }
+}
+
+function addSearchResult(idx) {
+    if (idx >= 0 && idx < searchResults.length) {
+        const video = searchResults[idx];
+        addVideoById(video.id, video.title, video.channel, video.duration);
+    }
+}
+
+function addAllSearchResults() {
+    let added = 0;
+    searchResults.forEach(video => {
+        if (!videoList.find(v => v.id === video.id)) {
+            videoList.push({ id: video.id, title: video.title, channel: video.channel, views: video.views || '', duration: video.duration || '...' });
+            added++;
+        }
+    });
+    renderVideoList();
+    showToast(`已添加 ${added} 个视频到列表`, 'success');
+    saveToStorage();
+}
+
+// ===================== QUICK SEARCH =====================
+function quickSearch(term) {
+    document.getElementById('searchInput').value = term;
+    currentSearchQuery = term;
+    doSearch();
+    showToast(`正在搜索：${term}`, 'info');
+}
+
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    currentSearchQuery = '';
+    searchResults = [];
+    hideSearchBanner();
+    hideSearchResults();
+    document.getElementById('clearBtn').style.display = 'none';
+}
+
+// ===================== ADD VIDEO =====================
+async function addVideoById(id, title, channel, duration) {
+    if (videoList.find(v => v.id === id)) { showToast('该视频已在列表中', 'warning'); return; }
+    const video = { id, title: title || '加载中...', channel: channel || '加载中...', views: '', duration: duration || '...' };
+    videoList.push(video);
+    renderVideoList();
+    showToast('正在获取视频信息...', 'info');
+
+    // oEmbed 获取标题和频道（无需 API Key）
+    try {
+        const resp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`);
+        if (resp.ok) {
+            const data = await resp.json();
+            const idx = videoList.findIndex(v => v.id === id);
+            if (idx >= 0) { videoList[idx].title = data.title; videoList[idx].channel = data.author_name; }
+            renderVideoList();
+        }
+    } catch(e) {}
+
+    // YouTube Data API 获取时长和播放量
+    if (apiKey) {
+        try {
+            const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${id}&key=${apiKey}`;
+            const resp = await fetch(url);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.items && data.items.length > 0) {
+                    const item = data.items[0];
+                    let dur = '...';
+                    const rawDur = item.contentDetails?.duration;
+                    if (rawDur) {
+                        const m = rawDur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+                        if (m) {
+                            const h = m[1] ? parseInt(m[1]) : 0;
+                            const mi = m[2] ? parseInt(m[2]) : 0;
+                            const s = m[3] ? parseInt(m[3]) : 0;
+                            dur = (h ? h + ':' : '') + mi.toString().padStart(2,'0') + ':' + s.toString().padStart(2,'0');
+                        }
+                    }
+                    const views = item.statistics?.viewCount ? formatViews(item.statistics.viewCount) : '';
+                    const idx = videoList.findIndex(v => v.id === id);
+                    if (idx >= 0) { videoList[idx].duration = dur; videoList[idx].views = views; }
+                    renderVideoList();
+                }
+            }
+        } catch(e) {}
+    }
+    showToast(`"${video.title}" 已添加到列表`, 'success');
+    saveToStorage();
+}
+
+function addFromModal() {
+    const url = document.getElementById('modalUrlInput').value;
+    const id = extractVideoId(url);
+    if (!id) { showToast('无效的 YouTube 链接', 'error'); return; }
+    addVideoById(id);
+    closeModal();
+}
+
+function extractVideoId(url) {
+    url = url.trim();
+    if (!url) return null;
+    let m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    m = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    m = url.match(/shorts\/([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+    return null;
+}
+
+// ===================== API KEY =====================
+function saveApiKey() {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    if (!key) { showToast('请输入 API Key', 'warning'); return; }
+    apiKey = key;
+    try { localStorage.setItem('soundflow_apikey', key); } catch(e) {}
+    document.getElementById('apiStatus').textContent = '在线';
+    document.getElementById('apiStatus').className = 'api-status ok';
+    showToast('API Key 已保存', 'success');
+}
+
+function loadApiKey() {
+    try {
+        const saved = localStorage.getItem('soundflow_apikey');
+        if (saved) {
+            apiKey = saved;
+            document.getElementById('apiKeyInput').value = saved;
+            document.getElementById('apiStatus').textContent = '在线';
+            document.getElementById('apiStatus').className = 'api-status ok';
+        }
+    } catch(e) {}
+}
+
+// ===================== MODE TOGGLE =====================
+document.getElementById('audioModeToggle').addEventListener('click', function() {
+    audioMode = true;
+    this.classList.add('active');
+    showToast('声音模式保持开启：画面不会显示', 'success');
+});
+
+// ===================== SIDEBAR =====================
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
+}
+
+// ===================== YOUTUBE PLAYER - 真实播放 =====================
+function onYouTubeIframeAPIReady() {
+    // 使用实际尺寸初始化播放器，确保在视口内
+    player = new YT.Player('youtube-player', {
+        height: '270',
+        width: '480',
+        videoId: '',
+        playerVars: {
+            autoplay: 0,
+            controls: 1,
+            disablekb: 1,
+            fs: 0,
+            iv_load_policy: 3,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0,
+            playsinline: 1,
+            enablejsapi: 1,
+            origin: /^https?:$/.test(window.location.protocol) ? window.location.origin : undefined
+        },
+        events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
+            'onError': onPlayerError
+        }
+    });
+}
+
+function onPlayerReady(event) {
+    playerReady = true;
+    try { player.unMute(); player.setVolume(parseInt(document.getElementById('volumeSlider').value) || 80); } catch(e) {}
+    showToast('播放器已就绪，点击视频开始播放', 'success');
+    createVisualizer();
+    loadFromStorage();
+    loadApiKey();
+    if (videoList.length === 0) videoList = [...defaultVideos];
+    renderVideoList();
+    // 绑定搜索区域滚动提示
+    bindScrollHint();
+}
+
+function onPlayerError(event) {
+    console.error('YouTube Player Error:', event.data);
+    const messages = {2:'视频地址无效',5:'浏览器无法播放此视频',100:'视频不存在或已被删除',101:'视频禁止在外部网页播放',150:'视频禁止在外部网页播放'};
+    showToast(messages[event.data] || `播放器错误（${event.data}）`, 'error');
+}
+
+function onPlayerStateChange(event) {
+    if (event.data === YT.PlayerState.PLAYING) {
+        isPlaying = true;
+        videoLoaded = true;
+        playCount++;
+        updatePlayUI();
+        startProgressUpdater();
+        showNwPBar();
+        updateStats();
+        startViz();
+        if (currentIndex >= 0 && videoList[currentIndex]) { totalPlayTime += 1; saveToStorage(); }
+    } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+        isPlaying = false;
+        updatePlayUI();
+        stopProgressUpdater();
+        stopViz();
+        if (event.data === YT.PlayerState.ENDED) setTimeout(() => nextVideo(), 1500);
+    } else if (event.data === YT.PlayerState.BUFFERING) {
+        // 缓冲中
+    } else if (event.data === YT.PlayerState.CUED) {
+        // 视频已准备
+        videoLoaded = true;
+        // 获取时长
+        if (player && typeof player.getDuration === 'function') {
+            videoDuration = player.getDuration();
+            if (videoDuration > 0) {
+                document.getElementById('totalTime').textContent = formatTime(videoDuration);
+                document.getElementById('npTotal').textContent = formatTime(videoDuration);
+            }
+        }
+    }
+}
+
+// ===================== PLAYBACK =====================
+function playVideo(index) {
+    if (index < 0 || index >= videoList.length) return;
+    currentIndex = index;
+    videoDuration = 0;
+    videoLoaded = false;
+    const video = videoList[index];
+    rememberPlay(video);
+
+    if (player && playerReady) {
+        try {
+            player.loadVideoById({ videoId: video.id, startSeconds: 0, suggestedQuality: 'small' });
+            player.unMute();
+            player.setVolume(parseInt(document.getElementById('volumeSlider').value) || 80);
+            player.playVideo();
+            isPlaying = true;
+        } catch(e) {
+            showToast('加载视频失败', 'error');
+            return;
+        }
+        // 设置音量
+        const vol = parseInt(document.getElementById('volumeSlider').value);
+        try { player.setVolume(vol); } catch(e) {}
+        try { player.setPlaybackRate(currentSpeed); } catch(e) {}
+        updatePlayUI();
+        updatePlayerUI(video);
+        document.getElementById('welcomeScreen').classList.add('hidden');
+        document.getElementById('playerScreen').classList.remove('hidden');
+        document.getElementById('nowPlayingBar').classList.add('show');
+        showNwPBar();
+    }
+    // 显示界面
+    updatePlayerUI(video);
+    document.getElementById('welcomeScreen').classList.add('hidden');
+    document.getElementById('playerScreen').classList.remove('hidden');
+    document.getElementById('nowPlayingBar').classList.add('show');
+}
+
+function resumeVideo() {
+    if (!player || !playerReady) { showToast('播放器未就绪', 'warning'); return; }
+    try {
+        player.playVideo();
+        isPlaying = true;
+        updatePlayUI();
+        startProgressUpdater();
+        startViz();
+        showNwPBar();
+    } catch(e) {
+        showToast('播放失败: ' + e.message, 'error');
+    }
+}
+
+function pauseVideo() {
+    if (!player || !playerReady) return;
+    try { player.pauseVideo(); } catch(e) {}
+    isPlaying = false;
+    updatePlayUI();
+    stopProgressUpdater();
+    stopViz();
+}
+
+function togglePlay() {
+    if (currentIndex < 0) { showToast('请先添加视频到列表', 'info'); return; }
+    if (!player || !playerReady) { showToast('播放器正在初始化，请稍候...', 'info'); return; }
+    if (isPlaying) pauseVideo(); else resumeVideo();
+}
+
+function nextVideo() {
+    if (videoList.length === 0) return;
+    const next = (currentIndex + 1) % videoList.length;
+    playVideo(next);
+    // 自动播放
+    if (player && playerReady) {
+        try { player.playVideo(); isPlaying = true; updatePlayUI(); startProgressUpdater(); startViz(); } catch(e) {}
+    }
+}
+
+function prevVideo() {
+    if (videoList.length === 0) return;
+    if (player && playerReady) {
+        try {
+            const currentTime = player.getCurrentTime();
+            if (currentTime > 3) { player.seekTo(0); return; }
+        } catch(e) {}
+    }
+    const prev = (currentIndex - 1 + videoList.length) % videoList.length;
+    playVideo(prev);
+    if (player && playerReady) {
+        try { player.playVideo(); isPlaying = true; updatePlayUI(); startProgressUpdater(); startViz(); } catch(e) {}
+    }
+}
+
+function seekVideo(event) {
+    if (!player || !playerReady || !isPlaying) return;
+    const track = document.getElementById('progressTrack');
+    const rect = track.getBoundingClientRect();
+    const pos = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    try {
+        const duration = player.getDuration();
+        if (duration > 0) player.seekTo(duration * pos);
+    } catch(e) {}
+}
+
+function setVolume(val) {
+    if (!player || !playerReady) return;
+    try { player.setVolume(parseInt(val)); } catch(e) {}
+    const icon = document.getElementById('volIcon');
+    if (val == 0) icon.className = 'fas fa-volume-xmark';
+    else if (val < 40) icon.className = 'fas fa-volume-low';
+    else icon.className = 'fas fa-volume-high';
+}
+
+function cycleSpeed() {
+    const idx = speeds.indexOf(currentSpeed);
+    currentSpeed = speeds[(idx + 1) % speeds.length];
+    if (player && playerReady) try { player.setPlaybackRate(currentSpeed); } catch(e) {}
+    document.getElementById('speedBtn').textContent = currentSpeed.toFixed(2) + 'x';
+}
+
+// ===================== PROGRESS =====================
+function startProgressUpdater() {
+    stopProgressUpdater();
+    progressInterval = setInterval(updateProgress, 250);
+}
+
+function stopProgressUpdater() {
+    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+}
+
+function updateProgress() {
+    if (!player || !playerReady || currentIndex < 0) return;
+    try {
+        const current = player.getCurrentTime() || 0;
+        const duration = player.getDuration() || 0;
+
+        // 保存时长以供显示
+        if (duration > 0) videoDuration = duration;
+
+        const percent = duration > 0 ? (current / duration) * 100 : 0;
+
+        // 更新时间显示
+        document.getElementById('currentTime').textContent = formatTime(current);
+        document.getElementById('totalTime').textContent = formatTime(duration);
+        document.getElementById('progressFill').style.width = percent + '%';
+        document.getElementById('npCurrent').textContent = formatTime(current);
+        document.getElementById('npTotal').textContent = formatTime(duration);
+        document.getElementById('npProgressFill').style.width = percent + '%';
+
+        // 计算节省流量
+        const savedPerHour = (2500 - 128) * 0.001;
+        const savedMB = totalPlayTime > 0 ? totalPlayTime * (savedPerHour / 3600) : 0;
+        document.getElementById('dataSaved').textContent = formatBytes(savedMB);
+        document.getElementById('welcomeSaved').textContent = formatBytes(savedMB);
+    } catch(e) {
+        // 播放器可能还未准备好，静默处理
+    }
+}
+
+// ===================== UI UPDATES =====================
+function updatePlayUI() {
+    const cls = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+    document.getElementById('mainPlayIcon').className = cls;
+    document.getElementById('overlayPlayIcon').className = cls;
+    document.getElementById('npPlayBtn').innerHTML = `<i class="${cls}"></i>`;
+}
+
+function updatePlayerUI(video) {
+    document.getElementById('trackTitle').textContent = video.title;
+    document.getElementById('trackChannel').textContent = video.channel;
+    const img = document.getElementById('albumArtImg');
+    img.src = `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`;
+    img.onerror = () => { img.src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`; };
+    document.getElementById('npThumb').src = `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`;
+    document.getElementById('npTitle').textContent = video.title;
+    document.getElementById('npChannel').textContent = video.channel;
+    updatePlayUI();
+}
+
+function showNwPBar() { setTimeout(() => document.getElementById('nowPlayingBar').classList.add('show'), 100); }
+
+// ===================== VIDEO LIST =====================
+function renderVideoList() {
+    const container = document.getElementById('videoList');
+    if (videoList.length === 0) {
+        container.innerHTML = `<div class="list-empty"><i class="fas fa-video-slash"></i>播放列表为空<br><small>在上方搜索栏搜索视频，或点击"添加"按钮</small></div>`;
+        return;
+    }
+    container.innerHTML = '';
+    videoList.forEach((video, index) => {
+        const item = document.createElement('div');
+        item.className = 'video-item' + (index === currentIndex ? ' active' : '');
+        item.innerHTML = `
+            <div class="thumb">
+                <img src="https://img.youtube.com/vi/${video.id}/mqdefault.jpg" alt="${escapeHtml(video.title)}" loading="lazy"
+                    onerror="this.style.display='none'">
+                <span class="audio-badge"><i class="fas fa-headphones"></i> 音频</span>
+                <span class="duration">${video.duration || '...'}</span>
+            </div>
+            <div class="video-info">
+                <div class="video-title">${escapeHtml(video.title)}</div>
+                <div class="video-meta">
+                    <div>
+                        <div class="video-channel">${escapeHtml(video.channel || '未知频道')}</div>
+                        <div class="video-views">${video.views ? video.views + ' 次观看' : ''}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="video-remove" onclick="event.stopPropagation();removeVideo(${index})"><i class="fas fa-times"></i></div>
+        `;
+        item.onclick = () => playVideo(index);
+        container.appendChild(item);
+    });
+}
+
+function removeVideo(index) {
+    if (index < 0 || index >= videoList.length) return;
+    const removed = videoList.splice(index, 1)[0];
+    if (currentIndex === index) {
+        pauseVideo();
+        document.getElementById('playerScreen').classList.add('hidden');
+        document.getElementById('nowPlayingBar').classList.remove('show');
+        document.getElementById('welcomeScreen').classList.remove('hidden');
+        currentIndex = -1;
+    } else if (currentIndex > index) { currentIndex--; }
+    renderVideoList();
+    saveToStorage();
+    showToast(`已移除 "${removed.title}"`, 'info');
+}
+
+// ===================== VISUALIZER =====================
+function createVisualizer() {
+    const container = document.getElementById('visualizer');
+    container.innerHTML = '';
+    vizBars = [];
+    for (let i = 0; i < 48; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'viz-bar';
+        bar.style.animationDelay = (Math.random() * 1).toFixed(2) + 's';
+        bar.style.height = (Math.random() * 15 + 5) + '%';
+        container.appendChild(bar);
+        vizBars.push(bar);
+    }
+}
+
+function startViz() {
+    if (!vizBars.length) return;
+    const animate = () => {
+        if (!isPlaying) return;
+        vizBars.forEach(bar => {
+            bar.style.height = (Math.random() * 80 + 10) + '%';
+            bar.style.opacity = 0.5 + Math.random() * 0.5;
+        });
+        setTimeout(animate, 200 + Math.random() * 300);
+    };
+    animate();
+}
+
+function stopViz() {
+    vizBars.forEach(bar => { bar.style.height = (Math.random() * 15 + 5) + '%'; bar.style.opacity = 0.3; });
+}
+
+// ===================== MODAL =====================
+function openModal() {
+    document.getElementById('modalOverlay').classList.add('show');
+    document.getElementById('modalUrlInput').value = '';
+    setTimeout(() => document.getElementById('modalUrlInput').focus(), 100);
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// ===================== KEYBOARD =====================
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT') return;
+    switch(e.code) {
+        case 'Space': e.preventDefault(); if (currentIndex >= 0) togglePlay(); break;
+        case 'ArrowRight': e.preventDefault(); nextVideo(); break;
+        case 'ArrowLeft': e.preventDefault(); prevVideo(); break;
+        case 'KeyM': document.getElementById('audioModeToggle').click(); break;
+        case 'Escape': closeModal(); break;
+    }
+});
+
+// ===================== UTILS =====================
+function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function formatBytes(mb) {
+    if (!mb || mb <= 0) return '0 MB';
+    if (mb < 1) return '<1 MB';
+    return mb.toFixed(1) + ' MB';
+}
+
+function formatViews(n) {
+    n = parseInt(n);
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return n.toString();
+}
+
+function showToast(message, type) {
+    type = type || 'info';
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    const icons = { success:'fa-check-circle', info:'fa-info-circle', warning:'fa-exclamation-triangle', error:'fa-times-circle' };
+    const colors = { success:'var(--success)', info:'var(--accent-1)', warning:'var(--warning)', error:'var(--danger)' };
+    toast.innerHTML = `<i class="fas ${icons[type]}" style="color:${colors[type]}"></i> ${message}`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.animation = 'toastOut 0.3s forwards'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+// ===================== STORAGE =====================
+function saveToStorage() {
+    try { const data = { videoList, totalPlayTime, playCount, currentSpeed, searchHistory, playHistory }; localStorage.setItem('soundflow_data', JSON.stringify(data)); } catch(e) {}
+}
+
+function loadFromStorage() {
+    try {
+        const saved = localStorage.getItem('soundflow_data');
+        if (saved) {
+            const data = JSON.parse(saved);
+            if (data.videoList && data.videoList.length > 0) videoList = data.videoList;
+            totalPlayTime = data.totalPlayTime || 0;
+            playCount = data.playCount || 0;
+            currentSpeed = data.currentSpeed || 1.0;
+            searchHistory = Array.isArray(data.searchHistory) ? data.searchHistory : [];
+            playHistory = Array.isArray(data.playHistory) ? data.playHistory : [];
+            document.getElementById('speedBtn').textContent = currentSpeed.toFixed(2) + 'x';
+        }
+    } catch(e) {}
+}
+
+// ===================== HISTORY =====================
+function rememberSearch(query) {
+    searchHistory = searchHistory.filter(item => item.query.toLowerCase() !== query.toLowerCase());
+    searchHistory.unshift({ query, time: Date.now() });
+    searchHistory = searchHistory.slice(0, 30);
+    saveToStorage();
+    renderRecentSearches();
+}
+
+function renderRecentSearches() {
+    const container = document.getElementById('quickChips');
+    if (!container) return;
+    const recent = searchHistory.slice(0, 8).map(item => item.query);
+    const terms = [...new Set([...recent, ...DEFAULT_SEARCHES])].slice(0, 10);
+    container.replaceChildren(...terms.map(term => {
+        const chip = document.createElement('span');
+        chip.className = 'chip'; chip.textContent = term; chip.title = '快速搜索';
+        chip.onclick = () => quickSearch(term);
+        return chip;
+    }));
+}
+
+function rememberPlay(video) {
+    playHistory = playHistory.filter(item => item.id !== video.id);
+    playHistory.unshift({ ...video, time: Date.now() });
+    playHistory = playHistory.slice(0, 50);
+    saveToStorage();
+}
+
+function openHistory() { document.getElementById('historyOverlay').classList.add('show'); renderHistory(activeHistoryType); }
+function closeHistory() { document.getElementById('historyOverlay').classList.remove('show'); }
+function renderHistory(type) {
+    activeHistoryType = type;
+    document.getElementById('searchHistoryTab').classList.toggle('active', type === 'search');
+    document.getElementById('playHistoryTab').classList.toggle('active', type === 'play');
+    const list = document.getElementById('historyList');
+    const items = type === 'search' ? searchHistory : playHistory;
+    if (!items.length) { list.innerHTML = '<div class="history-empty">还没有履历</div>'; return; }
+    list.innerHTML = items.map((item, index) => type === 'search' ? `
+        <div class="history-item">
+            <i class="fas fa-search" style="color:var(--accent-1)"></i>
+            <div class="history-main"><div class="history-title">${escapeHtml(item.query)}</div><div class="history-meta">${formatHistoryTime(item.time)}</div></div>
+            <button class="btn btn-sm btn-primary" onclick="searchAgain(${index})">再次搜索</button>
+        </div>` : `
+        <div class="history-item">
+            <img src="https://img.youtube.com/vi/${item.id}/mqdefault.jpg" alt="">
+            <div class="history-main"><div class="history-title">${escapeHtml(item.title)}</div><div class="history-meta">${escapeHtml(item.channel || '')} · ${formatHistoryTime(item.time)}</div></div>
+            <button class="btn btn-sm btn-primary" onclick="playAgain('${item.id}')"><i class="fas fa-play"></i></button>
+        </div>`).join('');
+}
+
+function searchAgain(index) {
+    const item = searchHistory[index]; if (!item) return;
+    closeHistory(); document.getElementById('searchInput').value = item.query; currentSearchQuery = item.query; doSearch();
+}
+function playAgain(id) {
+    const item = playHistory.find(v => v.id === id); if (!item) return;
+    closeHistory();
+    let index = videoList.findIndex(v => v.id === id);
+    if (index < 0) { videoList.push({ id:item.id, title:item.title, channel:item.channel, views:item.views || '', duration:item.duration || '...' }); index = videoList.length - 1; renderVideoList(); }
+    playVideo(index);
+}
+function clearCurrentHistory() {
+    if (activeHistoryType === 'search') searchHistory = []; else playHistory = [];
+    saveToStorage(); renderHistory(activeHistoryType); showToast('履历已清空', 'info');
+}
+function formatHistoryTime(time) { return new Date(time).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }); }
+
+document.getElementById('historyOverlay').addEventListener('click', function(e) { if (e.target === this) closeHistory(); });
+
+function updateStats() {
+    document.getElementById('playingCount').textContent = playCount;
+    saveToStorage();
+}
+
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded', () => {
+    createVisualizer();
+    loadFromStorage();
+    loadApiKey();
+    if (videoList.length === 0) videoList = [...defaultVideos];
+    renderVideoList();
+    bindScrollHint();
+    renderRecentSearches();
+});
+</script>
+</body>
+</html>
