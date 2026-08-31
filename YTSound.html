@@ -202,9 +202,9 @@ input{font-family:inherit;outline:none;border:none}
 
 /* PLAYER SCREEN */
 .player-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;position:relative;z-index:2;gap:24px}
-.album-art{width:240px;height:240px;border-radius:var(--radius);position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(124,58,237,0.3);animation:albumGlow 3s ease-in-out infinite}
+.album-art{height:360px;width:auto;max-width:min(90vw,540px);border-radius:var(--radius);position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(124,58,237,0.3);animation:albumGlow 3s ease-in-out infinite;display:flex;align-items:center;justify-content:center}
 @keyframes albumGlow{0%,100%{box-shadow:0 20px 60px rgba(124,58,237,0.3)}50%{box-shadow:0 20px 80px rgba(236,72,153,0.3)}}
-.album-art img{width:100%;height:100%;object-fit:cover}
+.album-art img{width:auto;height:100%;max-width:100%;object-fit:contain;display:block}
 .album-art-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,10,15,0.8),transparent 60%)}
 .album-art .play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);opacity:0;transition:var(--transition)}
 .album-art:hover .play-overlay{opacity:1}
@@ -320,7 +320,7 @@ input{font-family:inherit;outline:none;border:none}
     .sidebar.collapsed{transform:translateX(-100%)}
     .sidebar-toggle{display:none}
     .header-stats{display:none}
-    .album-art{width:180px;height:180px}
+    .album-art{height:270px;width:auto;max-width:92vw}
     .np-progress{display:none}
     .progress-section{padding:0 14px}
     .volume-control{display:none}
@@ -337,7 +337,7 @@ input{font-family:inherit;outline:none;border:none}
     .search-results-wrapper{height:38vh;max-height:none;min-height:220px}
 }
 @media(max-width:480px){
-    .album-art{width:155px;height:155px}
+    .album-art{height:232px;width:auto;max-width:92vw}
     .track-title{font-size:1.05rem}
     .controls{gap:8px}
     .ctrl-btn{width:34px;height:34px}
