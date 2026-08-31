@@ -47,10 +47,6 @@ input{font-family:inherit;outline:none;border:none}
 .btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid var(--danger)}
 .btn-danger-ghost:hover{background:rgba(239,68,68,0.1)}
 
-/* 切换按钮 - 灰黑色背景 + 灰色字体，与履历按钮同风格 */
-.btn-switch{background:#1a1a1a!important;color:#a0a0b8!important;border:1px solid #333!important;font-weight:600!important;letter-spacing:0.3px}
-.btn-switch:hover{background:#2a2a2a!important;color:#c0c0c0!important;border-color:#444!important}
-
 /* APP */
 .app{display:flex;height:100vh;padding-top:60px}
 .sidebar{width:390px;min-width:390px;background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:var(--transition);position:relative}
@@ -58,6 +54,8 @@ input{font-family:inherit;outline:none;border:none}
 .sidebar-toggle{position:absolute;top:68px;left:390px;z-index:90;width:52px;height:48px;background:#e5e7eb;border:1px solid #cbd5e1;border-left:none;border-radius:0 var(--radius-sm) var(--radius-sm) 0;display:flex;align-items:center;justify-content:center;color:#111827;transition:var(--transition);font-size:0.78rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .sidebar-toggle:hover{color:#000;background:#f8fafc}
 .sidebar.collapsed~.sidebar-toggle{left:0}
+.header-collapse-btn{width:auto!important;padding:6px 14px!important;justify-content:center!important;background:#e5e7eb!important;border:1px solid #cbd5e1!important;color:#111827!important;font-size:0.78rem;font-weight:700}
+.header-collapse-btn:hover{background:#f8fafc!important;color:#000!important}
 
 /* SIDEBAR HEADER */
 .sidebar-header{padding:12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
@@ -367,8 +365,7 @@ input{font-family:inherit;outline:none;border:none}
     </div>
     <div class="header-actions">
         <div class="mode-toggle active" id="audioModeToggle" title="声音模式"><div class="toggle-dot"></div><span>纯音频</span></div>
-        <!-- 切换按钮：改为与履历按钮同风格（灰黑色背景 + 灰色字体） -->
-        <button class="btn btn-switch" id="headerToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏">切换</button>
+        <button class="btn header-collapse-btn" id="headerToggle" onclick="toggleSidebar()" title="折叠搜索栏" aria-label="折叠搜索栏">切换</button>
         <button class="btn btn-ghost" onclick="openHistory()" title="搜索与播放履历"><i class="fas fa-clock-rotate-left"></i> <span class="btn-label">履历</span></button>
         <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> <span class="btn-label">添加</span></button>
     </div>
@@ -420,8 +417,7 @@ input{font-family:inherit;outline:none;border:none}
         </div>
         <div class="player-screen hidden" id="playerScreen">
             <div class="album-art" id="albumArt">
-                <!-- 圆点改为 icon.png -->
-                <img id="albumArtImg" src="icon.png" alt="">
+                <img id="albumArtImg" src="" alt="">
                 <div class="album-art-overlay"></div>
                 <div class="play-overlay">
                     <button class="play-overlay-btn" id="overlayPlayBtn" onclick="togglePlay()" title="播放/暂停">
@@ -556,10 +552,15 @@ function pauseIconSVG() {
 function updatePinkIcons(playing) {
     const playIcon = playIconSVG();
     const pauseIcon = pauseIconSVG();
+    // Album art overlay button
+    const overlayBtn = document.getElementById('overlayPlayBtn');
     const overlayIcon = document.getElementById('overlayPinkIcon');
     if (overlayIcon) overlayIcon.outerHTML = playing ? pauseIcon : playIcon;
+    // Main control button
+    const mainBtn = document.getElementById('mainPlayBtn');
     const mainIcon = document.getElementById('mainPinkIcon');
     if (mainIcon) mainIcon.outerHTML = playing ? pauseIcon : playIcon;
+    // Update now playing bar
     const npBtn = document.getElementById('npPlayBtn');
     if (npBtn) npBtn.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
 }
@@ -878,6 +879,7 @@ function onPlayerReady(event) {
     createVisualizer(); loadFromStorage();
     if (videoList.length === 0) videoList = [...defaultVideos];
     renderVideoList(); bindScrollHint(); renderRecentSearches();
+    // 初始化粉色图标
     updatePinkIcons(false);
 }
 
@@ -943,7 +945,7 @@ function updatePlayUI() {
     const npBtn = document.getElementById('npPlayBtn');
     if (npBtn) npBtn.innerHTML = `<i class="${cls}"></i>`;
 }
-function updatePlayerUI(video) { document.getElementById('trackTitle').textContent = video.title; document.getElementById('trackChannel').textContent = video.channel; const img = document.getElementById('albumArtImg'); img.src = `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`; img.onerror = () => { img.src = 'icon.png'; }; document.getElementById('npThumb').src = `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`; document.getElementById('npTitle').textContent = video.title; document.getElementById('npChannel').textContent = video.channel; updatePlayUI(); }
+function updatePlayerUI(video) { document.getElementById('trackTitle').textContent = video.title; document.getElementById('trackChannel').textContent = video.channel; const img = document.getElementById('albumArtImg'); img.src = `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`; img.onerror = () => { img.src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`; }; document.getElementById('npThumb').src = `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`; document.getElementById('npTitle').textContent = video.title; document.getElementById('npChannel').textContent = video.channel; updatePlayUI(); }
 function showNwPBar() { setTimeout(() => document.getElementById('nowPlayingBar').classList.add('show'), 100); }
 
 // ===================== VIDEO LIST =====================
