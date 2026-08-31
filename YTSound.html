@@ -96,7 +96,7 @@ input{font-family:inherit;outline:none;border:none}
 @keyframes scrollHint{0%,100%{transform:translateY(0);opacity:0.5}50%{transform:translateY(3px);opacity:1}}
 
 /* SEARCH RESULTS - 带滚动条的可滑动区域 */
-.search-results-wrapper{flex:0 0 auto;max-height:304px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;background:#6f747d;border-top:1px solid #858b95;border-bottom:1px solid #858b95;transition:max-height .25s ease,opacity .25s ease}.search-results-wrapper.search-collapsed{max-height:0;overflow:hidden;border:0;opacity:0}
+.search-results-wrapper{flex:0 0 auto;max-height:304px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;background:#6f747d;border-top:1px solid #858b95;border-bottom:1px solid #858b95;transition:height .25s ease,max-height .25s ease,min-height .25s ease,opacity .25s ease}.search-results-wrapper.search-collapsed{height:0!important;min-height:0!important;max-height:0!important;flex-basis:0!important;overflow:hidden;border:0;opacity:0}
 .search-results-wrapper::-webkit-scrollbar{width:4px}
 .search-results-wrapper::-webkit-scrollbar-track{background:transparent}
 .search-results-wrapper::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -699,6 +699,7 @@ function performDemoSearch(query) {
 function showSearchResultsLoading() {
     const area = document.getElementById('searchResultsArea');
     const wrapper = document.getElementById('searchResultsWrapper');
+    setSearchResultsCollapsed(false);
     area.innerHTML = `<div class="search-loading"><div class="spinner"></div>正在搜索...</div>`;
     wrapper.classList.remove('hidden');
     updateScrollHint();
@@ -782,7 +783,19 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-function setSearchResultsCollapsed(collapsed) { searchResultsCollapsed = collapsed; const w=document.getElementById('searchResultsWrapper'); const b=document.getElementById('resultsCollapseBtn'); if(w) w.classList.toggle('search-collapsed',collapsed); if(b){b.innerHTML='<i class="fas '+(collapsed?'fa-chevron-down':'fa-chevron-up')+'"></i>';b.title=collapsed?'展开搜索结果':'收起搜索结果';} }
+function setSearchResultsCollapsed(collapsed) {
+    searchResultsCollapsed = collapsed;
+    const w = document.getElementById('searchResultsWrapper');
+    const b = document.getElementById('resultsCollapseBtn');
+    const hint = document.getElementById('scrollHint');
+    if (w) w.classList.toggle('search-collapsed', collapsed);
+    if (hint) hint.classList.remove('visible');
+    if (b) {
+        b.innerHTML = '<i class="fas '+(collapsed?'fa-chevron-down':'fa-chevron-up')+'"></i>';
+        b.title = collapsed ? '展开搜索结果' : '收起搜索结果';
+    }
+    if (!collapsed) updateScrollHint();
+}
 function toggleSearchResults(){setSearchResultsCollapsed(!searchResultsCollapsed);}
 
 function bindScrollHint() {
