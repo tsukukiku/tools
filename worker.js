@@ -5,8 +5,11 @@ const VIDEOS = 'https://www.googleapis.com/youtube/v3/videos';
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const allowedOrigins = (env.ALLOWED_ORIGINS || 'https://tsukukiku.github.io,https://star-style-studio.net').split(',').map(x => x.trim());
+    const requestOrigin = request.headers.get('Origin') || '';
+    const allowedOrigin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
     const cors = {
-      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || 'https://tsukukiku.github.io',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
