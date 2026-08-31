@@ -5,7 +5,7 @@ const VIDEOS = 'https://www.googleapis.com/youtube/v3/videos';
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const allowedOrigins = (env.ALLOWED_ORIGINS || 'https://tsukukiku.github.io,https://star-style-studio.net').split(',').map(x => x.trim());
+    const allowedOrigins = (env.ALLOWED_ORIGINS || 'https://tsukukiku.github.io,https://star-style-studio.net,https://www.star-style-studio.net').split(',').map(x => x.trim());
     const requestOrigin = request.headers.get('Origin') || '';
     const allowedOrigin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
     const cors = {
