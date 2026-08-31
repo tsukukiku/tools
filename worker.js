@@ -1,3 +1,4 @@
+// Deployment trigger: secrets configured 2026-08-31
 const SEARCH = 'https://www.googleapis.com/youtube/v3/search';
 const VIDEOS = 'https://www.googleapis.com/youtube/v3/videos';
 
