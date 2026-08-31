@@ -96,7 +96,7 @@ input{font-family:inherit;outline:none;border:none}
 @keyframes scrollHint{0%,100%{transform:translateY(0);opacity:0.5}50%{transform:translateY(3px);opacity:1}}
 
 /* SEARCH RESULTS - 带滚动条的可滑动区域 */
-.search-results-wrapper{flex:0 0 auto;max-height:380px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;background:#e5e7eb;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1}
+.search-results-wrapper{flex:0 0 auto;max-height:304px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;background:#6f747d;border-top:1px solid #858b95;border-bottom:1px solid #858b95;transition:max-height .25s ease,opacity .25s ease}.search-results-wrapper.search-collapsed{max-height:0;overflow:hidden;border:0;opacity:0}
 .search-results-wrapper::-webkit-scrollbar{width:4px}
 .search-results-wrapper::-webkit-scrollbar-track{background:transparent}
 .search-results-wrapper::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -104,11 +104,11 @@ input{font-family:inherit;outline:none;border:none}
 /* Firefox */
 .search-results-wrapper{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
 
-.search-results-header{padding:8px 14px 6px;font-size:0.76rem;color:#475569;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#d8dde5;z-index:2;border-bottom:1px solid #c0c7d2;margin-bottom:0}
-.search-results-header .count{color:var(--accent-1);font-weight:700}
-.search-result-card{display:flex;gap:8px;padding:8px 14px;cursor:pointer;transition:var(--transition);border-bottom:1px solid #cbd5e1;margin:0;background:#e5e7eb;color:#111827;opacity:1;filter:none}
-.search-result-card:hover{background:#f1f5f9}
-.search-result-card.in-playlist{background:#ddd9ef;box-shadow:inset 3px 0 0 var(--accent-1)}
+.search-results-header{padding:7px 10px;font-size:0.76rem;color:#1f2937;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;position:sticky;top:0;background:#858b95;z-index:2;border-bottom:1px solid #aeb4bd;margin-bottom:0}.search-results-header .results-label{justify-self:start;white-space:nowrap}.search-results-header .results-actions{justify-self:end}.results-collapse-btn,.add-all-btn{padding:3px 7px;border-radius:5px;background:#d1d5db;border:1px solid #b8bec7;color:#111827;font-size:.7rem;white-space:nowrap}.results-collapse-btn{width:30px;height:24px;padding:0}.results-collapse-btn:hover,.add-all-btn:hover{background:#e5e7eb}
+.search-results-header .count{color:#5b21b6;font-weight:800}
+.search-result-card{display:flex;gap:8px;padding:8px 14px;cursor:pointer;transition:var(--transition);border-bottom:1px solid #858b95;margin:0;background:#737983;color:#111827;opacity:1;filter:none}
+.search-result-card:hover{background:#858b95}
+.search-result-card.in-playlist{background:#7c8190;box-shadow:inset 3px 0 0 var(--accent-1)}
 .search-result-card.in-playlist:hover{background:#e8e3f7}
 .search-result-card.in-playlist .sr-add-btn{background:var(--success);box-shadow:0 2px 8px rgba(34,197,94,.28)}
 .search-result-card .sr-title{color:#111827}
@@ -318,7 +318,7 @@ input{font-family:inherit;outline:none;border:none}
     .ctrl-btn.play-main{width:44px;height:44px}
     .sidebar-header{padding-bottom:8px}
     .quick-chips{padding-left:10px;padding-right:10px}
-    .search-results-wrapper{height:48vh;max-height:none;min-height:260px}
+    .search-results-wrapper{height:38vh;max-height:none;min-height:220px}
 }
 @media(max-width:480px){
     .album-art{width:155px;height:155px}
@@ -330,7 +330,7 @@ input{font-family:inherit;outline:none;border:none}
     .sr-thumb{width:80px;min-width:80px;height:50px}
     .header{padding:0 10px}
     .logo span{font-size:1.05rem}
-    .search-results-wrapper{height:52vh;max-height:none;min-height:280px}
+    .search-results-wrapper{height:42vh;max-height:none;min-height:240px}
     .search-result-card{padding:7px 10px}
     .sr-title{font-size:.78rem}
     .header-actions{gap:4px}
@@ -525,6 +525,8 @@ let audioMode = true;
 let vizBars = [];
 let apiKey = '';
 let searchDebounceTimer = null;
+let searchCollapseTimer = null;
+let searchResultsCollapsed = false;
 let currentSearchQuery = '';
 let searchResults = [];
 let playerReady = false;
@@ -735,7 +737,7 @@ function renderSearchResults(results, query) {
     const area = document.getElementById('searchResultsArea');
     if (!results || results.length === 0) { showSearchResultsEmpty(query); updateScrollHint(); return; }
 
-    let html = `<div class="search-results-header">找到 <span class="count">${results.length}</span> 个搜索结果</div>`;
+    let html = `<div class="search-results-header"><span class="results-label">找到 <span class="count">${results.length}</span> 个搜索结果</span><button class="results-collapse-btn" id="resultsCollapseBtn" onclick="toggleSearchResults()" title="收起搜索结果"><i class="fas fa-chevron-up"></i></button><div class="results-actions"><button class="add-all-btn" onclick="addAllSearchResults()">全部添加</button></div></div>`;
     results.forEach((video, idx) => {
         const thumbSrc = video.thumb || `https://img.youtube.com/vi/${video.id}/mqdefault.jpg`;
         const inPlaylist = videoList.some(v => v.id === video.id);
@@ -753,10 +755,11 @@ function renderSearchResults(results, query) {
             <div class="sr-add-btn" onclick="event.stopPropagation();addSearchResult(${idx})" title="${inPlaylist ? '已在播放列表' : '添加到播放列表'}"><i class="fas ${inPlaylist ? 'fa-check' : 'fa-plus'}"></i></div>
         </div>`;
     });
-    html += `<div style="padding:6px 14px;text-align:center;border-top:1px solid var(--border)">
-        <button class="btn btn-sm btn-ghost" onclick="addAllSearchResults()"><i class="fas fa-layer-group"></i> 将全部 ${results.length} 个结果加入列表</button>
-    </div>`;
+    html += '';
     area.innerHTML = html;
+    setSearchResultsCollapsed(false);
+    if (searchCollapseTimer) clearTimeout(searchCollapseTimer);
+    searchCollapseTimer = setTimeout(() => setSearchResultsCollapsed(true), 30000);
     updateScrollHint();
     // 重新绑定滚动事件
     bindScrollHint();
@@ -778,6 +781,9 @@ function escapeHtml(str) {
     div.textContent = str;
     return div.innerHTML;
 }
+
+function setSearchResultsCollapsed(collapsed) { searchResultsCollapsed = collapsed; const w=document.getElementById('searchResultsWrapper'); const b=document.getElementById('resultsCollapseBtn'); if(w) w.classList.toggle('search-collapsed',collapsed); if(b){b.innerHTML='<i class="fas '+(collapsed?'fa-chevron-down':'fa-chevron-up')+'"></i>';b.title=collapsed?'展开搜索结果':'收起搜索结果';} }
+function toggleSearchResults(){setSearchResultsCollapsed(!searchResultsCollapsed);}
 
 function bindScrollHint() {
     const wrapper = document.getElementById('searchResultsWrapper');
