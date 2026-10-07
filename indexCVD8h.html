@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CVD 生长炉 v13 — 连续均匀释放 · 热区/冷区速度严格成比例</title>
+<style>
+  :root{--bg:#05070d;--panel:#0e1520;--line:#1d2836;--tx:#dbe4f0;--dim:#7c8aa0;
+        --grn:#3ddc84;--cyn:#59c2ff;--amb:#ffb020;--red:#ff5c6c}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--tx);font:14px/1.5 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;padding:12px 16px 30px}
+  h1{font-size:20px;text-align:center;margin:6px 0 14px}
+  h1 small{color:var(--dim);font-weight:400;font-size:14px}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);
+       border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+  .fld{display:flex;align-items:center;gap:6px}
+  .fld label{color:var(--dim);font-size:12.5px;white-space:nowrap}
+  .fld input{width:72px;background:#0a0f18;border:1px solid var(--line);color:var(--amb);
+             font-weight:600;padding:5px 7px;border-radius:6px;text-align:right}
+  button{background:#16243a;border:1px solid #2b4266;color:var(--tx);padding:7px 16px;
+         border-radius:8px;cursor:pointer;font-size:14px}
+  button:hover{background:#1d3151}
+  button.primary{background:#123a5c;border-color:#2f6ea6}
+  .pwrap{display:flex;align-items:center;gap:8px}
+  .pwrap input[type=range]{width:210px}
+  .pval{color:var(--cyn);font-weight:700;min-width:92px}
+  .pill{padding:3px 12px;border-radius:999px;font-size:12.5px;border:1px solid}
+  #toast{color:var(--grn);font-size:13px;min-width:150px}
+  #phys{color:var(--cyn);font-weight:600;text-align:center;margin:2px 0 8px;font-size:14.5px}
+  #stat2{color:var(--amb);font-weight:600;text-align:center;margin-bottom:8px}
+  .cards{display:flex;gap:12px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:8px 22px;text-align:center;min-width:250px}
+  .card .h{color:var(--dim);font-size:12.5px}
+  .card .v{font-size:24px;font-weight:800;color:var(--grn);font-variant-numeric:tabular-nums}
+  .card .s{color:var(--dim);font-size:11.5px}
+  canvas{display:block;width:100%;background:#0a0d14;border:1px solid var(--line);border-radius:10px}
+  #chart{margin-top:10px;height:170px}
+  #legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;color:var(--dim);
+          font-size:12.5px;margin-top:10px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
+</style>
+</head>
+<body>
+<h1>🔬 CVD 生长炉 v13 — SiC 平坦膜 <small>（时间均匀连续释放 · v∝T 比例保真 · 沉积⇌刻蚀）</small></h1>
+
+<div class="bar">
+  <span class="fld"><label>H₂ 载气 L/min</label><input id="f_H2" value="40"></span>
+  <span class="fld"><label>Ar L/min</label><input id="f_Ar" value="3"></span>
+  <span class="fld"><label>HCl L/min</label><input id="f_HCl" value="1"></span>
+  <span class="fld"><label>N₂ L/min</label><input id="f_N2" value="0.2"></span>
+  <span class="fld"><label>SiH₄ L/min</label><input id="f_SiH4" value="0.2"></span>
+  <span class="fld"><label>C₃H₈ L/min</label><input id="f_C3H8" value="0.2"></span>
+  <button class="primary" id="btnRun">▶ 运行 / 应用流量</button>
+  <button id="btnPause">⏸ 暂停</button>
+  <button id="btnReset">↺ 重置薄膜</button>
+  <span class="pwrap"><label style="color:var(--dim)">气压 P</label>
+    <input type="range" id="pP" min="1" max="100" step="0.5" value="20">
+    <span class="pval" id="pVal">20 kPa</span></span>
+  <span class="pill" id="pill"></span>
+  <span id="toast"></span>
+</div>
+
+<div id="phys"></div>
+<div class="cards">
+  <div class="card"><div class="h">晶体厚度（平均/最大）</div><div class="v" id="tAvg">0.00 μm</div><div class="s" id="tSub">平均 0.00 · 最大 0.00 μm</div></div>
+  <div class="card"><div class="h">净生长速率（沉积−刻蚀）</div><div class="v" id="tRate">0.00 μm/min</div><div class="s" id="tRateS">0.0 nm/s</div></div>
+  <div class="card"><div class="h">厚度累计（上限100μm）</div><div class="v" id="tNet">0.00 μm</div><div class="s" id="tNetS">结晶事件 0</div></div>
+</div>
+<div id="stat2"></div>
+
+<canvas id="cv"></canvas>
+<canvas id="chart"></canvas>
+
+<div id="legend">
+  <span><i class="dot" style="background:#6ec3ff"></i>H₂</span>
+  <span><i class="dot" style="background:#b48cff"></i>Ar</span>
+  <span><i class="dot" style="background:#ffb020"></i>HCl</span>
+  <span><i class="dot" style="background:#9aa5b1"></i>N₂</span>
+  <span><i class="dot" style="background:#ff5c8a"></i>SiH₄</span>
+  <span><i class="dot" style="background:#ff9f2e"></i>C₃H₈</span>
+  <span><i class="dot" style="background:#14532d"></i>衬底（单层·墨绿）</span>
+  <span><i class="dot" style="background:#86efac"></i>SiC 结晶薄膜</span>
+  <span>※ <b style="color:var(--grn)">v13：恒定速率+小数累加器→时间严格均匀，无批次无浪；全局动态慢放→热区/冷区速度严格 1:5.02（v∝T）</b></span>
+</div>
+
+<script>
+'use strict';
+/* ================= 常量与几何 ================= */
+const XMIN=-100,XMAX=280;
+const CHX0=-95,CHX1=-65,TAPX1=-15,EXX=272;
+const HFLAT=30,HCH=12;
+const WAF0=50,WAF1=150;
+const FS=-12.5;
+const AMAX=2200,PAIRMAX=25,FLASHMAX=80,ADSMAX=240;
+const SLOW=1/180,VISMAX=140;          // VISMAX 现在只用于全局缩放，不逐粒子截断
+const GAS={H2:{c:'#6ec3ff',M:2},Ar:{c:'#b48cff',M:40},HCl:{c:'#ffb020',M:36.5},
+           N2:{c:'#9aa5b1',M:28},SiH4:{c:'#ff5c8a',M:32},C3H8:{c:'#ff9f2e',M:44}};
+const ORDER=['H2','Ar','HCl','N2','SiH4','C3H8'];
+const PIPEY=[-4.5,-2.7,-0.9,0.9,2.7,4.5];
+const SEG=12;
+
+let F={H2:40,Ar:3,HCl:1,N2:0.2,SiH4:0.2,C3H8:0.2};
+let P=20, running=true, t=0, capped=false, rateUm=0, thick=0, events=0;
+let etchLoss=0, ouN=0;
+let segFac=Array.from({length:SEG},()=>0.85+Math.random()*0.3);
+let samples=[],sampleAcc=0,facAcc=0;
+let slowEff=SLOW;                      // ★ 全局动态慢放系数
+
+/* ================= 几何 / 温度 / 速度 ================= */
+function halfH(x){
+  if(x>=TAPX1) return HFLAT/2;
+  if(x<CHX1) return HCH/2;
+  const f=(x-CHX1)/(TAPX1-CHX1);
+  return (HCH+(HFLAT-HCH)*f)/2;
+}
+function tempAt(x){
+  if(x>=TAPX1) return 1600;
+  if(x<CHX1) return 25;
+  const f=(x-CHX1)/(TAPX1-CHX1);
+  return 100+1100*f;
+}
+function Qtot(){let s=0;for(const k of ORDER)s+=F[k];return s;}
+function vAt(Tc){return Qtot()*((Tc+273.15)/273.15)*(101.325/P)/60000/0.0045;}
+/* 屏幕速度（mm/s）：真实 m/s → ×1000 → ×慢放。★ 先统一算，再全局钳制，比例不破坏 */
+function vxScreen(Tc){return vAt(Tc)*1000*slowEff;}
+function updateSlow(){
+  const vHot=vAt(1600)*1000*SLOW;
+  slowEff = vHot>VISMAX ? VISMAX/vHot : SLOW;   // 热区超上限→整体放慢，比例不变
+}
+
+/* ================= 画布 ================= */
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const chC=document.getElementById('chart'),ct2=chC.getContext('2d');
+let W=0,H=420,px=3.3,ox=0,oy=210;
+function resize(){
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  W=cv.getBoundingClientRect().width;
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  px=(W-110)/(XMAX-XMIN); ox=70-XMIN*px; oy=H*0.52;
+  const r2=chC.getBoundingClientRect();
+  chC.width=r2.width*dpr; chC.height=170*dpr; ct2.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize',resize);
+const X=x=>x*px+ox, Y=y=>oy-y*px;
+
+/* ================= 粒子系统 ================= */
+const parts=[],adsS=[],adsC=[],flashes=[];
+const acc={}; ORDER.forEach(k=>acc[k]=0);
+function spawn(g){
+  if(parts.length>=AMAX) return;
+  parts.push({g,x:CHX0-1+Math.random()*3,
+              y:PIPEY[ORDER.indexOf(g)]+(Math.random()-0.5)*1.2,vy:0});
+}
+function adsorb(p){
+  const arr=p.g==='Si'?adsS:adsC;
+  arr.push({x:p.x,life:2.5});
+  if(arr.length>ADSMAX) arr.shift();
+}
+function segIdx(x){return Math.max(0,Math.min(SEG-1,Math.floor((x-WAF0)/((WAF1-WAF0)/SEG))));}
+function filmMm(x){return thick*segFac[segIdx(x)]/100*6;}
+
+/* ================= 物理步进 ================= */
+function step(dt){
+  t+=dt;
+  updateSlow();
+  /* ★ 连续均匀发射：恒定速率 + 小数累加器（无 sin 波浪、无每帧截断） */
+  for(const k of ORDER){
+    if(F[k]<=0){acc[k]=0;continue;}
+    acc[k]+=20*Math.pow(F[k],0.4)*dt;       // 恒定 R（个/秒），时间严格均匀
+    let n=Math.floor(acc[k]); acc[k]-=n;    // 攒够1个放1个，小数进位
+    while(n-->0) spawn(k);
+  }
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];
+    const Tk=tempAt(p.x);
+    p.x+=vxScreen(Tk)*dt;                   // ★ v ∝ T(K)，冷热区严格成比例
+    const M=p.g==='Si'?28.085:p.g==='C'?12:GAS[p.g].M;
+    const settle = M>29 ? -(M-29)*0.012 : 0; // 仅 Ar/HCl/C3H8 轻微下沉
+    const mixBoost=(p.x<CHX1)?1.6:1.0;
+    p.vy += ((settle-p.vy)*0.35 + (Math.random()-0.5)*130*mixBoost)*dt*3;
+    p.y+=p.vy*dt;
+    const hb=halfH(p.x)-0.8;
+    const bot=(p.x>WAF0&&p.x<WAF1)?FS+filmMm(p.x)+0.5:-hb;
+    if(p.y>hb){p.y=hb;p.vy=-Math.abs(p.vy)*0.55;}
+    if(p.y<bot){
+      p.y=bot; p.vy=Math.abs(p.vy)*0.55;
+      if((p.g==='Si'||p.g==='C')&&p.x>WAF0&&p.x<WAF1){adsorb(p);parts.splice(i,1);continue;}
+    }
+    if(p.x>EXX){parts.splice(i,1);continue;}
+    if(p.g==='SiH4'&&Tk>900){
+      const k=4*(Tk-900)/700;
+      if(Math.random()<1-Math.exp(-k*dt)){p.g='Si';p.vy+=6;}
+    }else if(p.g==='C3H8'&&Tk>850){
+      const k=3*(Tk-850)/750;
+      if(Math.random()<1-Math.exp(-k*dt)){p.g='C';p.vy+=6;}
+    }
+  }
+  /* 结晶配对（有界，防冻结） */
+  let pairs=0;
+  for(let i=adsS.length-1;i>=0&&pairs<PAIRMAX;i--){
+    const s=adsS[i];
+    for(let j=adsC.length-1;j>=0;j--){
+      if(Math.abs(adsC[j].x-s.x)<3.2){
+        events++;
+        if(flashes.length<FLASHMAX) flashes.push({x:(s.x+adsC[j].x)/2,r:0.4,a:1});
+        adsC.splice(j,1); adsS.splice(i,1); pairs++; break;
+      }
+    }
+  }
+  for(let i=adsS.length-1;i>=0;i--){adsS[i].life-=dt;if(adsS[i].life<=0)adsS.splice(i,1);}
+  for(let i=adsC.length-1;i>=0;i--){adsC[i].life-=dt;if(adsC[i].life<=0)adsC.splice(i,1);}
+  for(let i=flashes.length-1;i>=0;i--){
+    const f=flashes[i];f.r+=dt*3;f.a-=dt*2.2;
+    if(f.a<=0)flashes.splice(i,1);
+  }
+  /* 沉积 ⇌ 刻蚀 动态竞争 */
+  const U=0.30;
+  const mol=Math.min(F.SiH4*U,F.C3H8*3*U)/22.414;
+  const baseG=mol*(40.096/3.21)/150*1e4;
+  const fp=Math.pow(P/20,0.25);
+  const eta=0.55*F.HCl*Math.sqrt(F.H2/40+0.2)*Math.pow(20/P,0.15);
+  const eH2=0.08*(F.H2/40);
+  ouN+=(-ouN*0.8)*dt+(Math.random()-0.5)*1.4*Math.sqrt(dt);
+  ouN=Math.max(-1.2,Math.min(1.2,ouN));
+  const puff=1+0.06*Math.sin(t*0.9)+0.04*Math.sin(t*2.3);
+  const net=(baseG*fp-eta-eH2)*(1+0.18*ouN)*puff;
+  rateUm=Math.max(-3,Math.min(20,net));
+  if(rateUm<0){
+    etchLoss+=-rateUm/60*dt;
+    if(Math.random()<dt*8&&flashes.length<FLASHMAX)
+      flashes.push({x:WAF0+Math.random()*(WAF1-WAF0),r:0.3,a:0.9,et:1});
+  }
+  thick=Math.min(100,Math.max(0,thick+rateUm/60*dt));
+  capped=thick>=100;
+  facAcc+=dt;
+  if(facAcc>2){facAcc=0;
+    for(let i=0;i<SEG;i++)
+      segFac[i]=Math.min(1.18,Math.max(0.82,segFac[i]+(Math.random()-0.5)*0.08));
+  }
+  sampleAcc+=dt;
+  if(sampleAcc>=0.25){sampleAcc=0;samples.push({t,v:thick});
+    if(samples.length>2400)samples=samples.filter((_,i)=>i%2===0);}
+}
+
+/* ================= 绘制 ================= */
+function jet(v){v=Math.min(1,Math.max(0,v));
+  const r=Math.round(255*Math.min(1,Math.max(0,1.5-Math.abs(4*v-3))));
+  const g=Math.round(255*Math.min(1,Math.max(0,1.5-Math.abs(4*v-2))));
+  const b=Math.round(255*Math.min(1,Math.max(0,1.5-Math.abs(4*v-1))));
+  return `rgb(${r},${g},${b})`;}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#4a5a70';ctx.fillStyle='#7c8aa0';ctx.font='11px system-ui';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(X(XMIN),34);ctx.lineTo(X(XMAX),34);ctx.stroke();
+  ctx.textAlign='center';
+  for(let x=XMIN;x<=XMAX;x+=10){
+    const big=x%50===0;
+    ctx.beginPath();ctx.moveTo(X(x),34);ctx.lineTo(X(x),big?26:30);ctx.stroke();
+    if(big)ctx.fillText(x,X(x),22);
+  }
+  ctx.textAlign='left';
+  ctx.globalAlpha=0.30;
+  for(let x=CHX0;x<EXX;x+=4){
+    const hb=halfH(x+2);
+    ctx.fillStyle=jet((tempAt(x+2)-25)/1575);
+    ctx.fillRect(X(x),Y(hb),4*px+0.5,2*hb*px);
+  }
+  ctx.globalAlpha=1;
+  ctx.strokeStyle='#e2574d';ctx.lineWidth=3;
+  for(let x=TAPX1+5;x<=260;x+=22){
+    ctx.beginPath();ctx.arc(X(x),Y(15)-13,6,0,6.29);ctx.stroke();
+    ctx.beginPath();ctx.arc(X(x),Y(-15)+13,6,0,6.29);ctx.stroke();
+  }
+  ctx.strokeStyle='#8fa3bd';ctx.lineWidth=2.5;
+  ctx.strokeRect(X(CHX0),Y(6),(CHX1-CHX0)*px,12*px);
+  ctx.strokeStyle='#cfd8e3';ctx.lineWidth=3;ctx.lineJoin='round';
+  ctx.beginPath();
+  ctx.moveTo(X(CHX1),Y(-6));ctx.lineTo(X(TAPX1),Y(-15));ctx.lineTo(X(EXX),Y(-15));
+  ctx.moveTo(X(CHX1),Y(6)); ctx.lineTo(X(TAPX1),Y(15)); ctx.lineTo(X(EXX),Y(15));
+  ctx.stroke();
+  ctx.font='12px system-ui';
+  ORDER.forEach((k,i)=>{
+    ctx.fillStyle=GAS[k].c;
+    ctx.fillRect(X(CHX0)-36,Y(PIPEY[i])-2.5,36,5);
+    ctx.fillText(k,X(CHX0)-60,Y(PIPEY[i])+4);
+  });
+  ctx.strokeStyle='#58e07c';ctx.setLineDash([5,4]);ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(X(WAF0),Y(-15));ctx.lineTo(X(WAF0),Y(15));
+  ctx.moveTo(X(WAF1),Y(-15));ctx.lineTo(X(WAF1),Y(15));ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#14532d';ctx.fillRect(X(WAF0),Y(FS),(WAF1-WAF0)*px,2.5*px);
+  for(let i=0;i<SEG;i++){
+    const x0=WAF0+i*(WAF1-WAF0)/SEG,w=(WAF1-WAF0)/SEG;
+    const h=thick*segFac[i]/100*6*px;
+    if(h>0.3){
+      ctx.fillStyle='#86efac';ctx.fillRect(X(x0),Y(FS)-h,w*px,h);
+      ctx.fillStyle='#d6fbe4';ctx.fillRect(X(x0),Y(FS)-h,w*px,1.2);
+    }
+  }
+  for(const s of adsS){ctx.fillStyle='#3ddc84';ctx.beginPath();
+    ctx.arc(X(s.x),Y(FS)-filmMm(s.x)*px-2,2,0,6.29);ctx.fill();}
+  for(const c of adsC){ctx.fillStyle='#f2f6ff';ctx.beginPath();
+    ctx.arc(X(c.x),Y(FS)-filmMm(c.x)*px-2,2,0,6.29);ctx.fill();}
+  for(const f of flashes){
+    ctx.strokeStyle=f.et?`rgba(255,120,120,${f.a})`:`rgba(174,247,195,${f.a})`;
+    ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(X(f.x),Y(FS)-filmMm(f.x)*px-2,f.r*px,0,6.29);ctx.stroke();
+  }
+  for(const p of parts){
+    const col=p.g==='Si'?'#3ddc84':p.g==='C'?'#f2f6ff':GAS[p.g].c;
+    ctx.fillStyle=col;ctx.beginPath();
+    ctx.arc(X(p.x),Y(p.y),(p.g==='Si'||p.g==='C')?2.2:2.6,0,6.29);ctx.fill();
+  }
+  ctx.fillStyle='#ffd9a0';ctx.font='12.5px system-ui';
+  ctx.fillText('SiH₄ → Si + 2H₂',X(30),Y(10.5));
+  ctx.fillText('C₃H₈ → C + 碳氢碎片',X(30),Y(6));
+  ctx.fillText('沉积: Si + C → SiC ↓ ｜ 刻蚀: SiC + HCl/H₂ → 气态氯化物↑',X(30),Y(1.5));
+  ctx.fillStyle='#9fb0c8';
+  ctx.fillText('预混合室 25°C（扩散混匀）',X(CHX0)-26,Y(6)-14);
+  ctx.fillStyle='#7fd4ff';ctx.fillText('缓坡段 →1200°C',X(-58),Y(halfH(-58))-12);
+  ctx.fillStyle='#ff8a8a';ctx.fillText('高温平坦区 1600°C（线圈在炉外壁）',X(78),Y(15)-30);
+  ctx.fillStyle='#8fe3a8';ctx.fillText('Wafer 生长区 x=50–150mm（衬底在下）',X(60),Y(-15)+32);
+  ctx.fillStyle='#cfd8e3';ctx.fillText('尾气 →',X(256),Y(0)+4);
+  if(capped){ctx.fillStyle='#ff5c6c';ctx.font='bold 14px system-ui';
+    ctx.fillText('★ 膜厚已达 100 μm 上限（刻蚀仍可使其变薄）',X(70),Y(13.5));}
+  drawChart();
+}
+function drawChart(){
+  const w=chC.getBoundingClientRect().width,h=170;
+  ct2.clearRect(0,0,w,h);
+  ct2.fillStyle='#9fb0c8';ct2.font='12px system-ui';ct2.textAlign='left';
+  ct2.fillText('平均膜厚 vs 时间 (μm) — 上限 100 μm（刻蚀段会回落）',12,16);
+  const L=54,Rm=16,T=26,B=24,pw=w-L-Rm,ph=h-T-B;
+  const tx=Math.max(72,t);
+  ct2.strokeStyle='#17202e';ct2.fillStyle='#7c8aa0';ct2.lineWidth=1;ct2.textAlign='right';
+  for(let v=0;v<=100;v+=25){
+    const y=T+ph-ph*v/100;
+    ct2.beginPath();ct2.moveTo(L,y);ct2.lineTo(w-Rm,y);ct2.stroke();
+    ct2.fillText(v,L-6,y+4);
+  }
+  const stepT=[6,12,24,60].find(s=>tx/s<=7)||60;
+  ct2.textAlign='center';
+  for(let s=0;s<=tx;s+=stepT){
+    const x=L+pw*s/tx;
+    ct2.fillText(s+'s',x,h-8);
+  }
+  ct2.strokeStyle='#ff5c6c';ct2.setLineDash([6,4]);ct2.lineWidth=1.5;
+  ct2.beginPath();ct2.moveTo(L,T);ct2.lineTo(w-Rm,T);ct2.stroke();ct2.setLineDash([]);
+  if(samples.length>1){
+    ct2.strokeStyle='#86efac';ct2.lineWidth=2;ct2.beginPath();
+    for(let i=0;i<samples.length;i++){
+      const x=L+pw*samples[i].t/tx, y=T+ph-ph*Math.min(100,samples[i].v)/100;
+      i?ct2.lineTo(x,y):ct2.moveTo(x,y);
+    }
+    ct2.stroke();
+  }
+  ct2.fillStyle='#d6fbe4';ct2.textAlign='right';
+  ct2.fillText(thick.toFixed(2)+' μm',w-Rm,T-8);
+}
+
+/* ================= HUD ================= */
+const $=id=>document.getElementById(id);
+function updateHUD(){
+  const segs=segFac.map(f=>thick*f);
+  const mx=Math.max(...segs),mn=Math.min(...segs);
+  const uni=Math.max(0,(1-(mx-mn)/(thick||1))*100);
+  $('tAvg').textContent=thick.toFixed(2)+' μm';
+  $('tSub').textContent=`最大 ${mx.toFixed(2)} · 最小 ${mn.toFixed(2)} μm · 达上限 ${thick.toFixed(0)}%`;
+  const r=rateUm, rEl=$('tRate');
+  rEl.textContent=r.toFixed(2)+' μm/min';
+  rEl.style.color=r<0?'var(--red)':'var(--grn)';
+  $('tRateS').textContent=r<0?`${(r*16.667).toFixed(1)} nm/s · ⚠ 刻蚀占优（膜变薄）`
+                             :`${(r*16.667).toFixed(1)} nm/s · 沉积占优`;
+  $('tNet').textContent=thick.toFixed(2)+' μm';
+  $('tNetS').textContent=`结晶 ${events} · 刻蚀累计 ${etchLoss.toFixed(2)} μm · 均匀性 ${uni.toFixed(1)}%`;
+  const Q=Qtot(),v1=vAt(100),v3=vAt(1600),ratio=(1873.15/373.15);
+  $('phys').textContent=`Q总 = ${Q.toFixed(2)} slm ｜ 入口100°C: ${v1.toFixed(2)} m/s → 1600°C: ${v3.toFixed(2)} m/s ｜ 速度比 冷:热 = 1:${ratio.toFixed(2)}（v∝T，屏幕严格保持）｜ 热区停留 ${(270/v3).toFixed(1)} ms`;
+  $('stat2').textContent=`t = ${t.toFixed(1)} s ｜ 平均 ${thick.toFixed(2)} μm ｜ 净速率 ${r.toFixed(2)} μm/min ｜ 吸附原子 ${adsS.length+adsC.length} ｜ 粒子 ${parts.length}/${AMAX} ｜ 慢放 ×${(slowEff*180).toFixed(0)}/180`;
+  const pill=$('pill');
+  if(r<0){pill.textContent='⚠ 净刻蚀模式：HCl 过量，膜被腐蚀';pill.style.cssText='color:#ff5c6c;border-color:#8a2f38';}
+  else if(P<5){pill.textContent='低压：直线飞行 · 沉积集中';pill.style.cssText='color:#59c2ff;border-color:#2f6ea6';}
+  else if(P<=20){pill.textContent='过渡区(5–20kPa常用)：速率与均匀性平衡';pill.style.cssText='color:#3ddc84;border-color:#2f7d55';}
+  else{pill.textContent='常压附近：扩散混合强 · 均匀性好';pill.style.cssText='color:#ffb020;border-color:#8a6a1f';}
+}
+
+/* ================= 控件 ================= */
+function applyFlows(){
+  for(const k of ORDER){
+    let v=parseFloat($('f_'+k).value);
+    if(!isFinite(v)||v<0)v=0;
+    F[k]=v;
+  }
+}
+$('btnRun').onclick=()=>{applyFlows();running=true;$('btnPause').textContent='⏸ 暂停';
+  $('toast').textContent='✔ 流量已应用';
+  setTimeout(()=>$('toast').textContent='',2500);};
+$('btnPause').onclick=()=>{running=!running;
+  $('btnPause').textContent=running?'⏸ 暂停':'▶ 继续';};
+$('btnReset').onclick=()=>{thick=0;events=0;t=0;capped=false;samples=[];
+  etchLoss=0;ouN=0;
+  flashes.length=0;adsS.length=0;adsC.length=0;
+  segFac=Array.from({length:SEG},()=>0.85+Math.random()*0.3);
+  $('toast').textContent='膜厚已重置';setTimeout(()=>$('toast').textContent='',2000);};
+$('pP').oninput=e=>{P=parseFloat(e.target.value);$('pVal').textContent=P+' kPa';};
+
+/* ================= 主循环 ================= */
+let last=performance.now();
+function frame(now){
+  let dt=(now-last)/1000; last=now;
+  if(!(dt>0))dt=0.016;
+  if(dt>0.05)dt=0.05;
+  if(running)step(dt);
+  draw();updateHUD();
+  requestAnimationFrame(frame);
+}
+applyFlows();resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

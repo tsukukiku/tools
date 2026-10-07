@@ -1,0 +1,4336 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trench Measurer V5</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#eef2f5;color:#17212b;overflow:hidden}
+    .app{height:100vh;display:grid;grid-template-columns:1fr 390px;grid-template-rows:54px 1fr}
+    header{grid-column:1/3;display:flex;gap:8px;align-items:center;padding:7px 10px;background:#202a34;color:#fff}
+    h1{font-size:16px;margin:0 8px 0 0}.grp{display:flex;gap:6px;align-items:center;padding-right:8px;border-right:1px solid #435160}.grp:last-child{border-right:0}
+    button,.filebtn,input,select{height:34px;border:1px solid #d7dde4;border-radius:6px;background:#fff;color:#17212b;padding:0 10px;font:inherit}.filebtn input{display:none}.primary{background:#1477cc;color:#fff;border-color:#1477cc}.green{background:#009b72;color:#fff;border-color:#009b72}.dark{background:#344150;color:#fff;border-color:#344150}.mini{width:74px}
+    main{min-width:0;min-height:0;display:grid;grid-template-rows:1fr 178px;background:#101820}
+    #stage{position:relative;min-width:0;min-height:0;overflow:hidden;cursor:crosshair}#canvas{position:absolute;inset:0;width:100%;height:100%;background:#101820}
+    #hint{position:absolute;left:12px;bottom:12px;max-width:940px;padding:8px 10px;border-radius:6px;background:rgba(16,24,32,.84);color:#e7eef5;font-size:13px}
+    #ywin{position:absolute;display:none;background:rgba(255,255,255,.92);border:1px solid #7b4ab8;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.25);overflow:hidden;z-index:4;pointer-events:none}
+    #ywinTitle{height:22px;padding:2px 6px;background:#7b4ab8;color:#fff;font-size:12px;line-height:18px}
+    #yprofile{display:block;width:100%;height:calc(100% - 22px)}
+    .profile{display:grid;grid-template-columns:1fr 320px;gap:10px;padding:10px;background:#e8edf2;border-top:1px solid #2a3540}
+    #profile{width:100%;height:158px;background:#fff;border:1px solid #d7dde4;border-radius:6px}#pinfo{background:#fff;border:1px solid #d7dde4;border-radius:6px;padding:10px;font-size:13px;line-height:1.55}
+    aside{overflow:auto;background:#fff;border-left:1px solid #d7dde4;padding:12px}.sec{border-bottom:1px solid #d7dde4;margin-bottom:12px;padding-bottom:12px}.sec h2{font-size:14px;margin:0 0 8px}.row{display:grid;grid-template-columns:120px 1fr;gap:8px;margin-bottom:8px;font-size:13px}.row input,.row select{height:30px;width:100%}.small{font-size:12px;line-height:1.45;color:#657382}.actions{display:flex;gap:8px;flex-wrap:wrap}.badge{display:inline-block;background:#edf5ff;color:#145ea8;border-radius:4px;padding:2px 6px;margin-bottom:4px}
+    table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:6px 4px;border-bottom:1px solid #e5e9ee;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Trench V5</h1>
+    <div class="grp"><label class="filebtn">Open<input id="file" type="file" accept="image/*"></label><button id="fit" class="dark">Fit</button><span>Rot</span><input id="rot" class="mini" type="number" value="0" min="-5" max="5" step="0.1"><span>deg</span></div>
+    <div class="grp"><button id="cal">Scale</button><input id="calum" class="mini" type="number" value="10" step="0.001"><span>um</span></div>
+    <div class="grp"><button id="roi" class="primary">ROI</button><button id="scan" class="green">Auto fit</button></div>
+    <div class="grp"><button id="save">Save</button><button id="csv">CSV</button></div>
+  </header>
+  <main>
+    <div id="stage"><canvas id="canvas"></canvas><div id="ywin"><div id="ywinTitle">Y Profile</div><canvas id="yprofile"></canvas></div><div id="hint">Open image -> scale -> ROI -> Auto fit. Drag blue nodes or black measure lines.</div></div>
+    <div class="profile"><canvas id="profile"></canvas><div id="pinfo"><span class="badge">Profile</span>Waiting.</div></div>
+  </main>
+  <aside>
+    <div class="sec"><h2>Mode</h2><div class="row"><label>Image</label><select id="mode"><option value="auto">auto</option><option value="dark">trench dark</option><option value="bright">trench bright</option></select></div><div class="row"><label>Smooth px</label><input id="smooth" type="number" min="1" max="35" value="9"></div><div class="row"><label>SiO2</label><select id="oxide"><option value="none">No SiO2</option><option value="yes">With SiO2</option></select></div><div class="row"><label>Mask shape</label><select id="oxshape"><option value="triangle">triangle</option><option value="taper">tapered</option><option value="trapezoid">trapezoid</option></select></div><div class="small">12 blue nodes, 10 segments. Drag node 2, 8, 9 or the dashed guide lines. SiO2 mask adds Hox and Hc.</div></div>
+    <div class="sec"><h2>Metrics</h2><div id="metrics" class="small">No measurement.</div></div>
+    <div class="sec"><h2>Actions</h2><div class="actions"><button id="undo">Undo</button><button id="clear">Clear</button></div><p class="small">Black WA/WC/WB/Pitch/Height lines can move vertically. Right-drag pans. Wheel zooms.</p></div>
+    <div class="sec"><h2>Rows</h2><div style="max-height:300px;overflow:auto"><table id="tbl"><thead><tr><th>ID</th><th>Pitch</th><th>H</th><th>WA</th><th>WC</th><th>WB</th><th>Hox</th><th>Hc</th><th>aL</th><th>bL</th><th>aR</th><th>bR</th></tr></thead><tbody></tbody></table></div></div>
+  </aside>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const canvas=$('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
+const profCanvas=$('profile'),pctx=profCanvas.getContext('2d');
+const yCanvas=$('yprofile'),yctx=yCanvas.getContext('2d');
+const stage=$('stage');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const fmt=(v,d=3)=>Number.isFinite(v)?v.toFixed(d):'';
+const st={img:null,name:'',gray:null,view:{s:1,ox:0,oy:0},tool:'roi',roiArmed:false,cal:null,umPerPx:null,roi:null,yProfileX:null,yProfile:null,nodes:null,measure:null,drag:null,pan:null,history:[],rows:[]};
+function resize(){const r=stage.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);const p=profCanvas.getBoundingClientRect();profCanvas.width=p.width*devicePixelRatio;profCanvas.height=p.height*devicePixelRatio;pctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);draw();drawProfile()}addEventListener('resize',resize);resize();
+function i2s(x,y){return{x:x*st.view.s+st.view.ox,y:y*st.view.s+st.view.oy}}function s2i(x,y){return{x:(x-st.view.ox)/st.view.s,y:(y-st.view.oy)/st.view.s}}function mouse(e){const r=canvas.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;return{sx,sy,...s2i(sx,sy)}}function node(id){return st.nodes?.find(p=>p.id===id)}
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const url=URL.createObjectURL(f),img=new Image();img.onload=()=>{st.img=img;st.name=f.name;st.roi=null;st.nodes=null;st.measure=null;st.rows=[];st.cal=null;st.umPerPx=null;makeGray();fit();renderRows();URL.revokeObjectURL(url);$('hint').textContent='Image loaded. Set scale and draw ROI.'};img.src=url};
+function makeGray(){const off=document.createElement('canvas');off.width=st.img.width;off.height=st.img.height;const o=off.getContext('2d',{willReadFrequently:true});o.drawImage(st.img,0,0);const d=o.getImageData(0,0,off.width,off.height).data,g=new Float32Array(off.width*off.height);for(let i=0,j=0;i<d.length;i+=4,j++)g[j]=.299*d[i]+.587*d[i+1]+.114*d[i+2];st.gray={w:off.width,h:off.height,d:g}}
+function fit(){if(!st.img)return;const r=stage.getBoundingClientRect(),s=Math.min(r.width/st.img.width,r.height/st.img.height)*.96;st.view={s,ox:(r.width-st.img.width*s)/2,oy:(r.height-st.img.height*s)/2};draw()}
+$('fit').onclick=fit;$('cal').onclick=()=>{st.tool='cal';$('hint').textContent='Scale mode: drag scale bar endpoints.'};$('roi').onclick=()=>{st.tool='roi';st.roiArmed=true;$('hint').textContent='ROI mode: drag one trench cell.'};
+function setupTemplate(){if(!st.roi)return;const x=st.roi.x,w=st.roi.w,y=st.roi.y,h=st.roi.h;st.yProfileX=x+w*.08;st.yProfile=verticalProfileAtX(st.yProfileX);st.measure={wa:y+h*.08,wc:y+h*.5,wb:y+h*.9,pitch:y+h*.04,heightTop:y+h*.08,heightBottom:y+h*.9,oxTop:y+h*.015,oxBottom:y+h*.08,shoulder:y+h*.06};const lm=x+w*.16,lx=x+w*.36,rx=x+w*.54,ox=x+w*.78;st.nodes=[{id:1,x:lm,y:st.measure.wa},{id:2,x:lx,y:st.measure.wa},{id:3,x:lx,y:st.measure.wc},{id:4,x:lx,y:st.measure.wb},{id:5,x:(lx+rx)/2,y:st.measure.wb},{id:6,x:rx,y:st.measure.wb},{id:7,x:rx,y:st.measure.wc},{id:8,x:rx,y:st.measure.wa},{id:9,x:ox,y:st.measure.wa},{id:10,x:ox,y:st.measure.wc},{id:11,x:ox,y:st.measure.wb},{id:12,x:lm,y:st.measure.wb}];updateMetrics()}
+function syncY(){const m=st.measure;for(const id of [1,2,8,9])node(id).y=m.wa;for(const id of [3,7,10])node(id).y=m.wc;for(const id of [4,5,6,11,12])node(id).y=m.wb}
+function draw(){const r=stage.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);if(!st.img){ctx.fillStyle='#101820';ctx.fillRect(0,0,r.width,r.height);return}ctx.imageSmoothingEnabled=false;ctx.drawImage(st.img,st.view.ox,st.view.oy,st.img.width*st.view.s,st.img.height*st.view.s);drawCal();drawRoi();drawMeasureLines();drawSegments()}
+function drawCal(){if(!st.cal)return;const a=i2s(st.cal.x1,st.cal.y1),b=i2s(st.cal.x2,st.cal.y2);ctx.strokeStyle='#ffcf33';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.fillStyle='#ffcf33';for(const p of [a,b]){ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill()}}
+function drawRoi(){if(!st.roi)return;const p=i2s(st.roi.x,st.roi.y);ctx.save();ctx.strokeStyle='#2d9cff';ctx.setLineDash([7,5]);ctx.lineWidth=2;ctx.strokeRect(p.x,p.y,st.roi.w*st.view.s,st.roi.h*st.view.s);ctx.restore()}
+function drawMeasureLines(){if(!st.roi||!st.measure)return;const m=st.measure,xs=i2s(st.roi.x,0).x,xe=i2s(st.roi.x+st.roi.w,0).x;ctx.save();ctx.strokeStyle='#111';ctx.fillStyle='#111';ctx.lineWidth=1.4;ctx.font='12px Segoe UI';ctx.setLineDash([6,5]);let rows=[['wa','WA'],['wc','WC'],['wb','WB'],['pitch','Pitch'],['heightTop','H top'],['heightBottom','H bottom']];if(hasOxide())rows=rows.concat([['oxTop','Ox top'],['oxBottom','Ox bottom'],['shoulder','Hc']]);for(const [k,lab] of rows){const y=i2s(0,m[k]).y;ctx.beginPath();ctx.moveTo(xs,y);ctx.lineTo(xe,y);ctx.stroke();ctx.fillText(lab,xs+8,y-4)}ctx.setLineDash([]);if(st.nodes){line(node(2).x,m.wa,node(8).x,m.wa,'WA');line(node(3).x,m.wc,node(7).x,m.wc,'WC');line(node(4).x,m.wb,node(6).x,m.wb,'WB');line(node(1).x,m.pitch,node(9).x,m.pitch,'Pitch');line(node(2).x,m.heightTop,node(2).x,m.heightBottom,'Height');if(hasOxide()){line(node(1).x,m.oxTop,node(9).x,m.oxTop,'WSiO1');line(node(2).x,m.oxBottom,node(8).x,m.oxBottom,'WSiO2');line(node(8).x,m.oxBottom,node(8).x,m.shoulder,'Hc')}}ctx.restore()}
+function line(x1,y1,x2,y2,lab){const a=i2s(x1,y1),b=i2s(x2,y2);ctx.strokeStyle='#111';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.fillStyle='rgba(255,255,255,.9)';ctx.fillRect((a.x+b.x)/2-28,(a.y+b.y)/2-10,56,18);ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,(a.x+b.x)/2,(a.y+b.y)/2)}
+function orangeLine(x1,y1,x2,y2,lab){const a=i2s(x1,y1),b=i2s(x2,y2);ctx.strokeStyle='#ff9826';ctx.fillStyle='#ff9826';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.font='12px Segoe UI';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,(a.x+b.x)/2,(a.y+b.y)/2-10)}
+function drawSegments(){if(!st.nodes)return;const segs=[[1,1,2,'#d11f3a'],[2,2,3,'#d11f3a'],[3,3,4,'#d11f3a'],[4,4,5,'#d11f3a'],[5,5,6,'#009b72'],[6,6,7,'#009b72'],[7,7,8,'#009b72'],[8,8,9,'#009b72'],[9,9,10,'#009b72'],[10,10,11,'#009b72']];ctx.save();for(const [lab,aId,bId,col] of segs){const a=node(aId),b=node(bId),as=i2s(a.x,a.y),bs=i2s(b.x,b.y);ctx.strokeStyle=col;ctx.lineWidth=2.8;ctx.beginPath();ctx.moveTo(as.x,as.y);ctx.lineTo(bs.x,bs.y);ctx.stroke();ctx.fillStyle='rgba(255,255,255,.92)';ctx.beginPath();ctx.arc((as.x+bs.x)/2,(as.y+bs.y)/2,10,0,7);ctx.fill();ctx.fillStyle=col;ctx.font='13px Segoe UI';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(lab),(as.x+bs.x)/2,(as.y+bs.y)/2)}for(const p of st.nodes){const s=i2s(p.x,p.y);ctx.fillStyle='#1e88ff';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(s.x,s.y,6,0,7);ctx.fill();ctx.stroke();ctx.fillStyle='#064a96';ctx.font='12px Segoe UI';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(String(p.id),s.x,s.y-9)}ctx.restore()}
+function profileAt(y){if(!st.gray||!st.roi)return null;const gy=clamp(Math.round(y),0,st.gray.h-1),x0=clamp(Math.round(st.roi.x),0,st.gray.w-1),x1=clamp(Math.round(st.roi.x+st.roi.w),0,st.gray.w-1),n=Math.max(2,x1-x0+1),v=new Float32Array(n),w=Math.max(1,parseInt($('smooth').value,10));for(let i=0;i<n;i++){let s=0,c=0;for(let k=-Math.floor(w/2);k<=Math.floor(w/2);k++){const xx=clamp(x0+i+k,0,st.gray.w-1);s+=st.gray.d[gy*st.gray.w+xx];c++}v[i]=s/c}return{x0,y:gy,v}}
+function verticalProfileAtX(x){if(!st.gray||!st.roi)return null;const gx=clamp(Math.round(x),0,st.gray.w-1),y0=clamp(Math.round(st.roi.y),0,st.gray.h-1),y1=clamp(Math.round(st.roi.y+st.roi.h),0,st.gray.h-1),n=Math.max(2,y1-y0+1),v=new Float32Array(n),win=Math.max(1,Math.round(st.roi.w*.025));for(let i=0;i<n;i++){let s=0,c=0;for(let k=-win;k<=win;k++){const xx=clamp(gx+k,0,st.gray.w-1);s+=st.gray.d[(y0+i)*st.gray.w+xx];c++}v[i]=s/c}return{y0,x:gx,v}}
+function meanRange(v,a,b){a=clamp(Math.round(a),0,v.length-1);b=clamp(Math.round(b),0,v.length-1);if(a>b){const t=a;a=b;b=t}let s=0,n=0;for(let i=a;i<=b;i++){s+=v[i];n++}return n?s/n:0}
+function crossingNear(v,a,b,thr,wantRising){let best=(a+b)/2,bd=1e9;for(let i=a;i<b;i++){const v0=v[i],v1=v[i+1];const crosses=wantRising?(v0<=thr&&v1>=thr):(v0>=thr&&v1<=thr);if(crosses&&Math.abs(v1-v0)>1e-6)return i+(thr-v0)/(v1-v0);const d=Math.abs((v0+v1)/2-thr);if(d<bd){bd=d;best=i+.5}}return best}
+function snapEdgeNear(prof,startX,span,wantRising){const v=prof.v,n=v.length,c=clamp(Math.round(startX-prof.x0),3,n-4),a=clamp(c-Math.round(span),3,n-4),b=clamp(c+Math.round(span),3,n-4);let gi=c,bs=-Infinity;for(let i=a;i<=b;i++){const g=v[i+1]-v[i-1],s=wantRising?g:-g;if(s>bs){bs=s;gi=i}}const pad=Math.max(4,Math.round(span*.22));const left=meanRange(v,gi-pad*2,gi-pad),right=meanRange(v,gi+pad,gi+pad*2);const thr=(left+right)/2;const x=crossingNear(v,Math.max(0,gi-pad*2),Math.min(n-1,gi+pad*2),thr,wantRising);return prof.x0+x}
+function learnY(){const px=st.yProfileX??(st.roi.x+st.roi.w*.08);const p=verticalProfileAtX(px);if(!p)return;st.yProfileX=p.x;st.yProfile=p;const n=p.v.length,g=[];for(let i=1;i<n-1;i++)g.push({i,score:Math.abs(p.v[i+1]-p.v[i-1])});const top=g.filter(a=>a.i>n*.03&&a.i<n*.30).sort((a,b)=>b.score-a.score)[0];const bot=g.filter(a=>a.i>n*.62&&a.i<n*.98).sort((a,b)=>b.score-a.score)[0];const topY=p.y0+(top?top.i:Math.round(n*.08)),botY=p.y0+(bot?bot.i:Math.round(n*.9));st.measure.wa=topY;st.measure.wb=botY;st.measure.wc=topY+(botY-topY)*.5;st.measure.pitch=Math.max(st.roi.y+3,topY-(botY-topY)*.045);st.measure.heightTop=topY;st.measure.heightBottom=botY;if(st.measure.oxTop==null)st.measure.oxTop=st.measure.pitch;if(st.measure.oxBottom==null)st.measure.oxBottom=topY;st.measure.oxBottom=topY;if(st.measure.shoulder==null)st.measure.shoulder=topY-(topY-st.measure.oxTop)*.25;syncY()}
+function horizontalEdges(y){const p=profileAt(y);if(!p)return null;const arr=[];for(let i=2;i<p.v.length-2;i++)arr.push({x:p.x0+i,idx:i,score:Math.abs(p.v[i+1]-p.v[i-1]),rising:(p.v[i+1]-p.v[i-1])>0});arr.sort((a,b)=>b.score-a.score);const out=[];for(const e of arr){const mid=snapEdgeNear(p,e.x,Math.max(8,st.roi.w*.045),e.rising);if(out.every(o=>Math.abs(o.x-mid)>st.roi.w*.065))out.push({x:mid});if(out.length>=10)break}out.sort((a,b)=>a.x-b.x);return out.map(e=>e.x)}
+function clusterXs(values,tol){values.sort((a,b)=>a-b);const clusters=[];for(const x of values){let c=clusters.find(c=>Math.abs(c.mean-x)<tol);if(!c){c={sum:0,n:0,mean:x};clusters.push(c)}c.sum+=x;c.n++;c.mean=c.sum/c.n}return clusters.filter(c=>c.n>=2).sort((a,b)=>a.mean-b.mean)}
+function wholeRoiEdges(){const xs=[];const y0=st.roi.y+st.roi.h*.08,y1=st.roi.y+st.roi.h*.92;for(let k=0;k<18;k++){const y=y0+(y1-y0)*k/17;const e=horizontalEdges(y);if(!e)continue;for(const x of e)xs.push(x)}return clusterXs(xs,Math.max(8,st.roi.w*.035)).map(c=>c.mean)}
+function pickTemplateXs(edges){if(!edges||edges.length<4)return null;let best=null,score=Infinity;for(let i=0;i<=edges.length-4;i++){const q=edges.slice(i,i+4);const gaps=[q[1]-q[0],q[2]-q[1],q[3]-q[2]];const s=Math.abs(gaps[0]-gaps[2])+Math.abs(gaps[1]-((gaps[0]+gaps[2])*.55));if(s<score){score=s;best=q}}return best}
+function scan(){if(!st.roi){alert('Draw ROI first.');return}if(!st.nodes)setupTemplate();learnY();const xs=pickTemplateXs(wholeRoiEdges());if(xs){node(1).x=xs[0];node(2).x=xs[1];node(8).x=xs[2];node(9).x=xs[3];for(const id of [3,4])node(id).x=node(2).x;for(const id of [7,6])node(id).x=node(8).x;for(const id of [10,11])node(id).x=node(9).x;node(12).x=node(1).x}const span=Math.max(10,st.roi.w*.08);for(const [y,ids] of [[st.measure.wa,[2,8,9]],[st.measure.wc,[3,7,10]],[st.measure.wb,[4,6,11]]]){const p=profileAt(y);if(!p)continue;node(ids[0]).x=snapEdgeNear(p,node(ids[0]).x,span,true);node(ids[1]).x=snapEdgeNear(p,node(ids[1]).x,span,false);node(ids[2]).x=snapEdgeNear(p,node(ids[2]).x,span,true)}node(5).x=(node(4).x+node(6).x)/2;updateMetrics();draw();drawProfile();$('hint').textContent='Auto fit: full ROI scan found adjacent slope midpoints; left Y profile set WA/WC/WB.'}$('scan').onclick=scan;
+function hitTest(m){if(st.nodes){for(const p of st.nodes){const s=i2s(p.x,p.y);if(Math.hypot(s.x-m.sx,s.y-m.sy)<12)return{type:'node',id:p.id}}}if(st.roi&&st.yProfileX!=null&&m.y>=st.roi.y&&m.y<=st.roi.y+st.roi.h){const x=i2s(st.yProfileX,0).x;if(Math.abs(m.sx-x)<9)return{type:'yProfileX'}}if(st.measure&&st.roi){let keys=['wa','wc','wb','pitch','heightTop','heightBottom'];if(hasOxide())keys=keys.concat(['oxTop','oxBottom','shoulder']);for(const k of keys){const y=i2s(0,st.measure[k]).y;if(Math.abs(m.sy-y)<8)return{type:'measureY',key:k}}}return null}
+function moveColumn(id,x,y){if(id===2){const dx=clamp(x,st.roi.x,st.roi.x+st.roi.w)-node(2).x;for(const i of [2,3,4])node(i).x=clamp(node(i).x+dx,st.roi.x,st.roi.x+st.roi.w);st.measure.wa=clamp(y,st.roi.y,st.roi.y+st.roi.h)}else if(id===8){const dx=clamp(x,st.roi.x,st.roi.x+st.roi.w)-node(8).x;for(const i of [8,7,6])node(i).x=clamp(node(i).x+dx,st.roi.x,st.roi.x+st.roi.w);st.measure.wa=clamp(y,st.roi.y,st.roi.y+st.roi.h)}else if(id===9){const dx=clamp(x,st.roi.x,st.roi.x+st.roi.w)-node(9).x;for(const i of [9,10,11])node(i).x=clamp(node(i).x+dx,st.roi.x,st.roi.x+st.roi.w);st.measure.wa=clamp(y,st.roi.y,st.roi.y+st.roi.h)}syncY()}
+function dragNode(id,x,y){if([2,8,9].includes(id)){moveColumn(id,x,y);return}const p=node(id);p.x=clamp(x,st.roi.x,st.roi.x+st.roi.w);p.y=clamp(y,st.roi.y,st.roi.y+st.roi.h);if(id===1)st.measure.wa=p.y;if([3,7,10].includes(id))st.measure.wc=p.y;if([4,5,6,11,12].includes(id))st.measure.wb=p.y;if(id===5)p.x=(node(4).x+node(6).x)/2;syncY()}function dragMeasureY(k,y){st.measure[k]=clamp(y,st.roi.y,st.roi.y+st.roi.h);syncY()}
+canvas.onmousedown=e=>{if(!st.img)return;const m=mouse(e);if(e.button===2){st.pan={sx:m.sx,sy:m.sy,ox:st.view.ox,oy:st.view.oy};return}const hit=hitTest(m);if(hit){st.drag={...hit,old:JSON.parse(JSON.stringify({nodes:st.nodes,measure:st.measure}))};return}if(st.tool==='cal'){st.drag={type:'cal'};st.cal={x1:m.x,y1:m.y,x2:m.x,y2:m.y};draw();return}if(st.tool==='roi'&&st.roiArmed){st.drag={type:'roi',start:m};st.roi={x:m.x,y:m.y,w:1,h:1};st.nodes=null;st.measure=null;draw()}};
+canvas.onmousemove=e=>{if(!st.img)return;const m=mouse(e);if(st.pan){st.view.ox=st.pan.ox+m.sx-st.pan.sx;st.view.oy=st.pan.oy+m.sy-st.pan.sy;draw();return}if(st.drag?.type==='cal'){st.cal.x2=m.x;st.cal.y2=m.y;updateCal();draw();return}if(st.drag?.type==='roi'){const s=st.drag.start;st.roi={x:Math.min(s.x,m.x),y:Math.min(s.y,m.y),w:Math.abs(m.x-s.x),h:Math.abs(m.y-s.y)};draw();return}if(st.drag?.type==='yProfileX'){st.yProfileX=clamp(m.x,st.roi.x,st.roi.x+st.roi.w);st.yProfile=verticalProfileAtX(st.yProfileX);draw();drawProfile();return}if(st.drag?.type==='node'){dragNode(st.drag.id,m.x,m.y);updateMetrics();draw();drawProfile();return}if(st.drag?.type==='measureY'){dragMeasureY(st.drag.key,m.y);updateMetrics();draw();drawProfile();return}};
+canvas.onmouseup=()=>{if(st.drag?.type==='roi'&&st.roi&&st.roi.w>8&&st.roi.h>8){st.roiArmed=false;setupTemplate();$('hint').textContent='Template created. Press Auto fit for best match.'}if(st.drag?.old)st.history.push(st.drag.old);st.drag=null;st.pan=null;draw();drawProfile()};canvas.onmouseleave=()=>{st.drag=null;st.pan=null};canvas.oncontextmenu=e=>e.preventDefault();canvas.onwheel=e=>{if(!st.img)return;e.preventDefault();const m=mouse(e),old=st.view.s;st.view.s=clamp(old*(e.deltaY<0?1.12:.89),.05,24);const q=i2s(m.x,m.y);st.view.ox+=m.sx-q.x;st.view.oy+=m.sy-q.y;draw()},{passive:false};
+function updateCal(){if(!st.cal)return;const px=Math.hypot(st.cal.x2-st.cal.x1,st.cal.y2-st.cal.y1),um=parseFloat($('calum').value);st.umPerPx=px>0&&um>0?um/px:null;updateMetrics()}$('calum').oninput=updateCal;
+function metrics(){if(!st.nodes||!st.measure)return null;const u=st.umPerPx||1,ang=(a,b)=>Math.atan((b.x-a.x)/(b.y-a.y))*180/Math.PI;return{pitch:Math.abs(node(9).x-node(1).x)*u,height:Math.abs(st.measure.heightBottom-st.measure.heightTop)*u,wa:Math.abs(node(8).x-node(2).x)*u,wc:Math.abs(node(7).x-node(3).x)*u,wb:Math.abs(node(6).x-node(4).x)*u,mesaLeft:Math.abs(node(2).x-node(1).x)*u,mesaRight:Math.abs(node(9).x-node(8).x)*u,alphaL:ang(node(2),node(3)),betaL:ang(node(3),node(4)),alphaR:ang(node(8),node(7)),betaR:ang(node(7),node(6)),outerAlpha:ang(node(9),node(10)),outerBeta:ang(node(10),node(11)),bow:(Math.abs(node(7).x-node(3).x)-((Math.abs(node(8).x-node(2).x)+Math.abs(node(6).x-node(4).x))/2))*u}}
+function updateMetrics(){const m=metrics();if(!m){$('metrics').textContent='No measurement.';return}const unit=st.umPerPx?'um':'px';$('metrics').innerHTML=`<span class="badge">${st.umPerPx?'scale '+fmt(st.umPerPx,5)+' um/px':'not calibrated, px'}</span><br>Pitch: ${fmt(m.pitch)} ${unit}<br>Height: ${fmt(m.height)} ${unit}<br>WA / WC / WB: ${fmt(m.wa)} / ${fmt(m.wc)} / ${fmt(m.wb)} ${unit}<br>Left/Right mesa: ${fmt(m.mesaLeft)} / ${fmt(m.mesaRight)} ${unit}<br>aL / bL: ${fmt(m.alphaL,2)} / ${fmt(m.betaL,2)} deg<br>aR / bR: ${fmt(m.alphaR,2)} / ${fmt(m.betaR,2)} deg<br>Outer 9 / 10: ${fmt(m.outerAlpha,2)} / ${fmt(m.outerBeta,2)} deg<br>Bowing: ${fmt(m.bow)} ${unit}`}
+function drawProfile(){const r=profCanvas.getBoundingClientRect();pctx.clearRect(0,0,r.width,r.height);pctx.fillStyle='white';pctx.fillRect(0,0,r.width,r.height);pctx.strokeStyle='#d7dde4';pctx.strokeRect(.5,.5,r.width-1,r.height-1);if(!st.measure)return;const hGap=12,leftW=Math.max(120,r.width*.18);drawYProfile(8,18,leftW-16,r.height-36);const p=profileAt(st.measure.wc);if(!p)return;let lo=1e9,hi=-1e9;for(const a of p.v){lo=Math.min(lo,a);hi=Math.max(hi,a)}const pad=24,x0=leftW+hGap,xs=(r.width-x0-pad)/(p.v.length-1),ys=(r.height-pad*2)/Math.max(1,hi-lo);pctx.strokeStyle='#2c6da3';pctx.lineWidth=2;pctx.beginPath();for(let i=0;i<p.v.length;i++){const x=x0+i*xs,y=r.height-pad-(p.v[i]-lo)*ys;i?pctx.lineTo(x,y):pctx.moveTo(x,y)}pctx.stroke();const mark=(x,col,lab)=>{const sx=x0+(x-p.x0)*xs;pctx.strokeStyle=col;pctx.beginPath();pctx.moveTo(sx,pad);pctx.lineTo(sx,r.height-pad);pctx.stroke();pctx.fillStyle=col;pctx.fillText(lab,sx+4,pad+12)};if(st.nodes){mark(node(3).x,'#d11f3a','L');mark(node(7).x,'#009b72','R');mark(node(10).x,'#009b72','O')}$('pinfo').innerHTML=`<span class="badge">Profile</span>Left: Y profile; right: WC profile<br>WC y=${Math.round(p.y)} px<br>gray: ${fmt(lo,1)} - ${fmt(hi,1)}`}
+function drawYProfile(x,y,w,h){const p=st.yProfile||verticalProfileAtX(st.roi?.x+(st.roi?.w||0)*.08);if(!p)return;let lo=1e9,hi=-1e9;for(const a of p.v){lo=Math.min(lo,a);hi=Math.max(hi,a)}pctx.save();pctx.strokeStyle='#d7dde4';pctx.strokeRect(x,y,w,h);pctx.strokeStyle='#7b4ab8';pctx.lineWidth=2;pctx.beginPath();for(let i=0;i<p.v.length;i++){const xx=x+(p.v[i]-lo)/Math.max(1,hi-lo)*w;const yy=y+i/(p.v.length-1)*h;i?pctx.lineTo(xx,yy):pctx.moveTo(xx,yy)}pctx.stroke();if(st.measure){for(const [yy,label] of [[st.measure.wa,'WA'],[st.measure.wc,'WC'],[st.measure.wb,'WB']]){const sy=y+(yy-p.y0)/(p.v.length-1)*h;pctx.strokeStyle='#111';pctx.beginPath();pctx.moveTo(x,sy);pctx.lineTo(x+w,sy);pctx.stroke();pctx.fillStyle='#111';pctx.fillText(label,x+4,sy-3)}}pctx.restore()}
+$('save').onclick=()=>{const m=metrics();if(!m){alert('No measurement.');return}st.rows.push({id:st.rows.length+1,file:st.name,...m,scale:st.umPerPx||1});renderRows()};function renderRows(){const tb=$('tbl').querySelector('tbody');tb.innerHTML='';for(const m of st.rows){const tr=document.createElement('tr');tr.innerHTML=`<td>${m.id}</td><td>${fmt(m.pitch)}</td><td>${fmt(m.height)}</td><td>${fmt(m.wa)}</td><td>${fmt(m.wc)}</td><td>${fmt(m.wb)}</td><td>${fmt(m.alphaL,2)}</td><td>${fmt(m.betaL,2)}</td><td>${fmt(m.alphaR,2)}</td><td>${fmt(m.betaR,2)}</td>`;tb.appendChild(tr)}}
+$('csv').onclick=()=>{if(!st.rows.length){alert('No rows.');return}const cols=['file','id','scale','pitch','height','WA','WC','WB','mesa_left','mesa_right','alpha_left','beta_left','alpha_right','beta_right','outer_alpha','outer_beta','bowing'];const lines=[cols.join(',')];for(const m of st.rows)lines.push([m.file,m.id,m.scale,m.pitch,m.height,m.wa,m.wc,m.wb,m.mesaLeft,m.mesaRight,m.alphaL,m.betaL,m.alphaR,m.betaR,m.outerAlpha,m.outerBeta,m.bow].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='trench_measurements_v2.csv';a.click();URL.revokeObjectURL(a.href)}
+$('undo').onclick=()=>{const h=st.history.pop();if(!h)return;st.nodes=h.nodes;st.measure=h.measure;updateMetrics();draw();drawProfile()};$('clear').onclick=()=>{st.roi=null;st.yProfileX=null;st.yProfile=null;st.nodes=null;st.measure=null;updateMetrics();draw();drawProfile()};
+
+function snapRowOrdered(y, ids){
+  const p=profileAt(y); if(!p)return;
+  const old=ids.map(id=>node(id).x);
+  const gaps=[Math.max(8,old[1]-old[0]),Math.max(8,old[2]-old[1])];
+  const span=Math.max(8,Math.min(st.roi.w*.055,gaps[0]*.42,gaps[1]*.42));
+  const nx=[
+    snapEdgeNear(p,old[0],span,false),
+    snapEdgeNear(p,old[1],span,true),
+    snapEdgeNear(p,old[2],span,false)
+  ];
+  const minGap=Math.max(5,st.roi.w*.018);
+  if(nx[0] < nx[1]-minGap && nx[1] < nx[2]-minGap){
+    node(ids[0]).x=nx[0];
+    node(ids[1]).x=nx[1];
+    node(ids[2]).x=nx[2];
+  }else{
+    node(ids[0]).x=old[0];
+    node(ids[1]).x=old[1];
+    node(ids[2]).x=old[2];
+  }
+}
+
+function initialPlaceFromWholeRoi(){
+  learnY();
+  const xs=pickTemplateXs(wholeRoiEdges());
+  if(xs){
+    node(1).x=xs[0]; node(2).x=xs[1]; node(8).x=xs[2]; node(9).x=xs[3];
+    for(const id of [3,4])node(id).x=node(2).x;
+    for(const id of [7,6])node(id).x=node(8).x;
+    for(const id of [10,11])node(id).x=node(9).x;
+    node(12).x=node(1).x;
+  }
+}
+
+function hasOxide(){return $('oxide')?.value==='yes'}
+function oxideShape(){return $('oxshape')?.value||'triangle'}
+function setOxideDefaults(){
+  if(!st.roi||!st.measure)return;
+  if(st.measure.oxTop==null)st.measure.oxTop=Math.max(st.roi.y,st.measure.wa-st.roi.h*.06);
+  if(st.measure.oxBottom==null)st.measure.oxBottom=st.measure.wa;
+  if(st.measure.shoulder==null)st.measure.shoulder=st.measure.oxBottom-Math.max(2,Math.abs(st.measure.oxBottom-st.measure.oxTop)*.25);
+  st.measure.shoulder=clamp(st.measure.shoulder,Math.min(st.measure.oxTop,st.measure.oxBottom),Math.max(st.measure.oxTop,st.measure.oxBottom));
+}
+
+function oxideGeom(){
+  if(!st.nodes||!st.measure)return null;
+  setOxideDefaults();
+  const shape=oxideShape(),m=st.measure;
+  const botL=node(2).x,botR=node(8).x,center=(botL+botR)/2,botW=Math.abs(botR-botL);
+  const topFrac=shape==='triangle'?0:(shape==='taper'?.48:.82);
+  const topW=botW*topFrac,topL=center-topW/2,topR=center+topW/2;
+  return{shape,botL,botR,botW,topL,topR,topW,center,topY:m.oxTop,botY:m.oxBottom,shoulderY:m.shoulder,capH:Math.abs(m.shoulder-m.oxTop),baseH:Math.abs(m.oxBottom-m.shoulder)};
+}
+
+function drawOxideMask(){
+  if(!hasOxide()||!st.roi||!st.measure||!st.nodes)return;
+  const g=oxideGeom();
+  const rectPts=[[g.botL,g.shoulderY],[g.botR,g.shoulderY],[g.botR,g.botY],[g.botL,g.botY]];
+  const capPts=g.shape==='triangle'
+    ? [[g.center,g.topY],[g.botR,g.shoulderY],[g.botL,g.shoulderY]]
+    : [[g.topL,g.topY],[g.topR,g.topY],[g.botR,g.shoulderY],[g.botL,g.shoulderY]];
+  const drawPoly=pts=>{
+    ctx.beginPath();
+    pts.forEach(([x,y],i)=>{const p=i2s(x,y);i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});
+    ctx.closePath();ctx.fill();ctx.stroke();
+  };
+  ctx.save();
+  ctx.fillStyle='rgba(255,153,38,.22)';
+  ctx.strokeStyle='#ff9826';
+  ctx.lineWidth=2;
+  ctx.setLineDash([8,4]);
+  drawPoly(rectPts);
+  drawPoly(capPts);
+  ctx.setLineDash([]);
+  const l=i2s(g.botL,g.shoulderY),r=i2s(g.botR,g.shoulderY);
+  ctx.strokeStyle='#ff9826';
+  ctx.lineWidth=1.6;
+  ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(r.x,r.y);ctx.stroke();
+  ctx.fillStyle='#ff9826';
+  ctx.font='12px Segoe UI';
+  const a=i2s(g.botL,g.topY);
+  ctx.fillText('SiO2 '+g.shape,a.x+6,a.y-8);
+  ctx.restore();
+}
+
+$('oxide').onchange=()=>{setOxideDefaults();updateMetrics();draw();drawProfile()};
+$('oxshape').onchange=()=>{setOxideDefaults();updateMetrics();draw()};
+
+function scan(){
+  if(!st.roi){alert('Draw ROI first.');return}
+  const hadTemplate=!!st.nodes;
+  if(!st.nodes)setupTemplate();
+  if(!hadTemplate)initialPlaceFromWholeRoi();
+  snapRowOrdered(st.measure.wa,[2,8,9]);
+  snapRowOrdered(st.measure.wc,[3,7,10]);
+  snapRowOrdered(st.measure.wb,[4,6,11]);
+  node(5).x=(node(4).x+node(6).x)/2;
+  updateMetrics();draw();drawProfile();
+  $('hint').textContent=hadTemplate
+    ? 'Auto fit: kept manual layout, locally snapped red/green1/green2 to adjacent slope midpoints without crossing.'
+    : 'Auto fit: initial placement from full ROI, then snapped to slope midpoints.';
+}
+$('scan').onclick=scan;
+
+function draw(){
+  const r=stage.getBoundingClientRect();
+  ctx.clearRect(0,0,r.width,r.height);
+  if(!st.img){ctx.fillStyle='#101820';ctx.fillRect(0,0,r.width,r.height);return}
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(st.img,st.view.ox,st.view.oy,st.img.width*st.view.s,st.img.height*st.view.s);
+  drawMainYProfile();
+  drawCal();drawRoi();drawYProfileGuide();drawOxideMask();drawMeasureLines();drawSegments();
+}
+
+function drawYProfileGuide(){
+  if(!st.roi||st.yProfileX==null)return;
+  const a=i2s(st.yProfileX,st.roi.y),b=i2s(st.yProfileX,st.roi.y+st.roi.h);
+  ctx.save();
+  ctx.strokeStyle='#7b4ab8';
+  ctx.fillStyle='#7b4ab8';
+  ctx.lineWidth=2;
+  ctx.setLineDash([7,5]);
+  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font='12px Segoe UI';
+  ctx.fillText('Y profile',a.x+6,a.y+16);
+  ctx.restore();
+}
+
+function drawMainYProfile(){
+  const ywin=$('ywin');
+  if(!st.roi){ywin.style.display='none';return}
+  if(st.yProfileX==null)st.yProfileX=st.roi.x+st.roi.w*.08;
+  const p=verticalProfileAtX(st.yProfileX);
+  if(!p){ywin.style.display='none';return}
+  st.yProfile=p;
+  const top=i2s(0,st.roi.y).y;
+  const bottom=i2s(0,st.roi.y+st.roi.h).y;
+  const roiLeft=i2s(st.roi.x,0).x;
+  const h=bottom-top;
+  const w=Math.max(70,Math.min(150,st.roi.w*st.view.s*.18));
+  const gapPx=76;
+  const x=Math.max(8,roiLeft-w-gapPx);
+  ywin.style.display='block';
+  ywin.style.left=`${x}px`;
+  ywin.style.top=`${top}px`;
+  ywin.style.width=`${w}px`;
+  ywin.style.height=`${h}px`;
+  const titleH=22;
+  yCanvas.width=Math.max(1,Math.round(w*devicePixelRatio));
+  yCanvas.height=Math.max(1,Math.round((h-titleH)*devicePixelRatio));
+  yctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  yctx.clearRect(0,0,w,h-titleH);
+  let lo=1e9,hi=-1e9;
+  for(const a of p.v){lo=Math.min(lo,a);hi=Math.max(hi,a)}
+  yctx.save();
+  yctx.fillStyle='rgba(255,255,255,.92)';
+  yctx.fillRect(0,0,w,h-titleH);
+  yctx.strokeStyle='#7b4ab8';
+  yctx.lineWidth=2;
+  yctx.beginPath();
+  for(let i=0;i<p.v.length;i++){
+    const xx=(p.v[i]-lo)/Math.max(1,hi-lo)*w;
+    const yy=i/(p.v.length-1)*(h-titleH);
+    i?yctx.lineTo(xx,yy):yctx.moveTo(xx,yy);
+  }
+  yctx.stroke();
+  if(st.measure){
+    yctx.font='12px Segoe UI';
+    yctx.fillStyle='#111';
+    yctx.strokeStyle='#111';
+    yctx.lineWidth=1.3;
+    for(const [yy,label] of [[st.measure.wa,'WA'],[st.measure.wc,'WC'],[st.measure.wb,'WB']]){
+      const sy=(yy-st.roi.y)/st.roi.h*(h-titleH);
+      yctx.beginPath();yctx.moveTo(0,sy);yctx.lineTo(w,sy);yctx.stroke();
+      yctx.fillText(label,4,sy-3);
+    }
+  }
+  yctx.restore();
+}
+
+function drawProfile(){
+  const r=profCanvas.getBoundingClientRect();
+  pctx.clearRect(0,0,r.width,r.height);
+  pctx.fillStyle='white';pctx.fillRect(0,0,r.width,r.height);
+  pctx.strokeStyle='#d7dde4';pctx.strokeRect(.5,.5,r.width-1,r.height-1);
+  if(!st.measure)return;
+  const p=profileAt(st.measure.wc);if(!p)return;
+  let lo=1e9,hi=-1e9;for(const a of p.v){lo=Math.min(lo,a);hi=Math.max(hi,a)}
+  const pad=24;
+  const plotW=st.roi?Math.max(80,Math.min(r.width-pad*2,st.roi.w*st.view.s)):r.width-pad*2;
+  const x0=pad;
+  const xs=plotW/(p.v.length-1),ys=(r.height-pad*2)/Math.max(1,hi-lo);
+  pctx.strokeStyle='#d7dde4';pctx.strokeRect(x0,pad,plotW,r.height-pad*2);
+  pctx.strokeStyle='#2c6da3';pctx.lineWidth=2;pctx.beginPath();
+  for(let i=0;i<p.v.length;i++){
+    const x=x0+i*xs,y=r.height-pad-(p.v[i]-lo)*ys;
+    i?pctx.lineTo(x,y):pctx.moveTo(x,y);
+  }
+  pctx.stroke();
+  const mark=(x,col,lab)=>{const sx=x0+(x-p.x0)*xs;pctx.strokeStyle=col;pctx.beginPath();pctx.moveTo(sx,pad);pctx.lineTo(sx,r.height-pad);pctx.stroke();pctx.fillStyle=col;pctx.fillText(lab,sx+4,pad+12)};
+  if(st.nodes){mark(node(3).x,'#d11f3a','L');mark(node(7).x,'#009b72','R');mark(node(10).x,'#009b72','O')}
+  $('pinfo').innerHTML=`<span class="badge">Profile</span>WC horizontal profile<br>WC y=${Math.round(p.y)} px<br>gray: ${fmt(lo,1)} - ${fmt(hi,1)}`;
+}
+
+function drawMeasureLines(){
+  if(!st.roi||!st.measure)return;
+  const m=st.measure,xs=i2s(st.roi.x,0).x,xe=i2s(st.roi.x+st.roi.w,0).x;
+  ctx.save();ctx.strokeStyle='#111';ctx.fillStyle='#111';ctx.lineWidth=1.4;ctx.font='12px Segoe UI';ctx.setLineDash([6,5]);
+  let rows=[['wa','WA'],['wc','WC'],['wb','WB'],['pitch','Pitch'],['heightTop','H top'],['heightBottom','H bottom']];
+  if(hasOxide())rows=rows.concat([['oxTop','Ox top'],['oxBottom','Ox bottom'],['shoulder','Hc']]);
+  for(const [k,lab] of rows){const y=i2s(0,m[k]).y;ctx.beginPath();ctx.moveTo(xs,y);ctx.lineTo(xe,y);ctx.stroke();ctx.fillText(lab,xs+8,y-4)}
+  ctx.setLineDash([]);
+  if(st.nodes){
+    line(node(2).x,m.wa,node(8).x,m.wa,'WA');
+    line(node(3).x,m.wc,node(7).x,m.wc,'WC');
+    line(node(4).x,m.wb,node(6).x,m.wb,'WB');
+    line(node(1).x,m.pitch,node(9).x,m.pitch,'Pitch');
+    line(node(2).x,m.heightTop,node(2).x,m.heightBottom,'Height');
+    if(hasOxide()){
+      const g=oxideGeom();
+      if(g){
+        orangeLine(g.topL,g.topY,g.topR,g.topY,'WSiO1');
+        orangeLine(g.botL,g.botY,g.botR,g.botY,'WSiO2');
+        orangeLine(g.botR,g.topY,g.botR,g.botY,'Hox');
+        orangeLine(g.botR,g.shoulderY,g.botR,g.botY,'Hc');
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function metrics(){
+  if(!st.nodes||!st.measure)return null;
+  setOxideDefaults();
+  const u=st.umPerPx||1,ang=(a,b)=>Math.atan((b.x-a.x)/(b.y-a.y))*180/Math.PI;
+  const g=oxideGeom();
+  const base={
+    pitch:Math.abs(node(9).x-node(1).x)*u,
+    height:Math.abs(st.measure.heightBottom-st.measure.heightTop)*u,
+    wa:Math.abs(node(8).x-node(2).x)*u,
+    wc:Math.abs(node(7).x-node(3).x)*u,
+    wb:Math.abs(node(6).x-node(4).x)*u,
+    mesaLeft:Math.abs(node(2).x-node(1).x)*u,
+    mesaRight:Math.abs(node(9).x-node(8).x)*u,
+    alphaL:ang(node(2),node(3)),
+    betaL:ang(node(3),node(4)),
+    alphaR:ang(node(8),node(7)),
+    betaR:ang(node(7),node(6)),
+    outerAlpha:ang(node(9),node(10)),
+    outerBeta:ang(node(10),node(11)),
+    bow:(Math.abs(node(7).x-node(3).x)-((Math.abs(node(8).x-node(2).x)+Math.abs(node(6).x-node(4).x))/2))*u,
+    oxide:hasOxide()?'yes':'no',
+    maskShape:hasOxide()?oxideShape():'',
+    wsio1:hasOxide()&&g?g.topW*u:NaN,
+    wsio2:hasOxide()&&g?g.botW*u:NaN,
+    hox:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.oxTop)*u:NaN,
+    hc:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.shoulder)*u:NaN
+  };
+  return base;
+}
+
+function updateMetrics(){
+  const m=metrics();if(!m){$('metrics').textContent='No measurement.';return}
+  const unit=st.umPerPx?'um':'px';
+  let html=`<span class="badge">${st.umPerPx?'scale '+fmt(st.umPerPx,5)+' um/px':'not calibrated, px'}</span><br>Pitch: ${fmt(m.pitch)} ${unit}<br>Height: ${fmt(m.height)} ${unit}<br>WA / WC / WB: ${fmt(m.wa)} / ${fmt(m.wc)} / ${fmt(m.wb)} ${unit}<br>Left/Right mesa: ${fmt(m.mesaLeft)} / ${fmt(m.mesaRight)} ${unit}<br>aL / bL: ${fmt(m.alphaL,2)} / ${fmt(m.betaL,2)} deg<br>aR / bR: ${fmt(m.alphaR,2)} / ${fmt(m.betaR,2)} deg<br>Outer 9 / 10: ${fmt(m.outerAlpha,2)} / ${fmt(m.outerBeta,2)} deg<br>Bowing: ${fmt(m.bow)} ${unit}`;
+  if(hasOxide())html+=`<br><br><span class="badge">SiO2 ${m.maskShape}</span><br>WSiO1 / WSiO2: ${fmt(m.wsio1)} / ${fmt(m.wsio2)} ${unit}<br>Hox: ${fmt(m.hox)} ${unit}<br>Hc: ${fmt(m.hc)} ${unit}`;
+  $('metrics').innerHTML=html;
+}
+
+function renderRows(){
+  const tb=$('tbl').querySelector('tbody');tb.innerHTML='';
+  for(const m of st.rows){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${m.id}</td><td>${fmt(m.pitch)}</td><td>${fmt(m.height)}</td><td>${fmt(m.wa)}</td><td>${fmt(m.wc)}</td><td>${fmt(m.wb)}</td><td>${fmt(m.hox)}</td><td>${fmt(m.hc)}</td><td>${fmt(m.alphaL,2)}</td><td>${fmt(m.betaL,2)}</td><td>${fmt(m.alphaR,2)}</td><td>${fmt(m.betaR,2)}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+$('save').onclick=()=>{const m=metrics();if(!m){alert('No measurement.');return}st.rows.push({id:st.rows.length+1,file:st.name,...m,scale:st.umPerPx||1});renderRows()};
+$('csv').onclick=()=>{if(!st.rows.length){alert('No rows.');return}const cols=['file','id','scale','oxide','mask_shape','pitch','height','WA','WC','WB','mesa_left','mesa_right','WSiO1','WSiO2','Hox','Hc','alpha_left','beta_left','alpha_right','beta_right','outer_alpha','outer_beta','bowing'];const lines=[cols.join(',')];for(const m of st.rows)lines.push([m.file,m.id,m.scale,m.oxide,m.maskShape,m.pitch,m.height,m.wa,m.wc,m.wb,m.mesaLeft,m.mesaRight,m.wsio1,m.wsio2,m.hox,m.hc,m.alphaL,m.betaL,m.alphaR,m.betaR,m.outerAlpha,m.outerBeta,m.bow].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='trench_measurements_v2.csv';a.click();URL.revokeObjectURL(a.href)}
+
+function mesaOxideGeoms(){
+  if(!hasOxide()||!st.nodes||!st.measure)return [];
+  setOxideDefaults();
+  const shape=oxideShape(),m=st.measure;
+  const make=(l,r,side)=>{
+    const botL=Math.min(l,r),botR=Math.max(l,r),center=(botL+botR)/2,botW=botR-botL;
+    const topFrac=shape==='triangle'?0:(shape==='taper'?.48:.82);
+    const topW=botW*topFrac,topL=center-topW/2,topR=center+topW/2;
+    return{side,shape,botL,botR,botW,topL,topR,topW,center,topY:m.oxTop,botY:m.oxBottom,shoulderY:m.shoulder};
+  };
+  return [make(node(1).x,node(2).x,'L-mesa'),make(node(8).x,node(9).x,'R-mesa')].filter(g=>g.botW>2);
+}
+
+function oxideGeom(){
+  const gs=mesaOxideGeoms();
+  return gs[0]||null;
+}
+
+function drawOneOxide(g){
+  const rectPts=[[g.botL,g.shoulderY],[g.botR,g.shoulderY],[g.botR,g.botY],[g.botL,g.botY]];
+  const capPts=g.shape==='triangle'
+    ? [[g.center,g.topY],[g.botR,g.shoulderY],[g.botL,g.shoulderY]]
+    : [[g.topL,g.topY],[g.topR,g.topY],[g.botR,g.shoulderY],[g.botL,g.shoulderY]];
+  const drawPoly=pts=>{
+    ctx.beginPath();
+    pts.forEach(([x,y],i)=>{const p=i2s(x,y);i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});
+    ctx.closePath();ctx.fill();ctx.stroke();
+  };
+  drawPoly(rectPts);
+  drawPoly(capPts);
+}
+
+function drawOxideMask(){
+  const gs=mesaOxideGeoms();
+  if(!gs.length)return;
+  ctx.save();
+  ctx.fillStyle='rgba(255,153,38,.22)';
+  ctx.strokeStyle='#ff9826';
+  ctx.lineWidth=2;
+  ctx.setLineDash([8,4]);
+  for(const g of gs)drawOneOxide(g);
+  ctx.setLineDash([]);
+  ctx.strokeStyle='#ff9826';
+  ctx.lineWidth=1.6;
+  for(const g of gs){
+    const l=i2s(g.botL,g.shoulderY),r=i2s(g.botR,g.shoulderY);
+    ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(r.x,r.y);ctx.stroke();
+  }
+  ctx.fillStyle='#ff9826';
+  ctx.font='12px Segoe UI';
+  const g=gs[0],a=i2s(g.botL,g.topY);
+  ctx.fillText('SiO2 '+g.shape,a.x+6,a.y-8);
+  ctx.restore();
+}
+
+function dragNode(id,x,y){
+  if([2,8,9].includes(id)){moveColumn(id,x,y);return}
+  if(id===4){
+    const dx=clamp(x,st.roi.x,st.roi.x+st.roi.w)-node(4).x;
+    const dy=clamp(y,st.roi.y,st.roi.y+st.roi.h)-node(4).y;
+    for(const i of [4,5,6]){
+      node(i).x=clamp(node(i).x+dx,st.roi.x,st.roi.x+st.roi.w);
+      node(i).y=clamp(node(i).y+dy,st.roi.y,st.roi.y+st.roi.h);
+    }
+    st.measure.wb=node(4).y;
+    syncY();
+    node(5).x=clamp(node(5).x,Math.min(node(4).x,node(6).x),Math.max(node(4).x,node(6).x));
+    return;
+  }
+  if(id===5){
+    node(5).x=clamp(x,Math.min(node(4).x,node(6).x),Math.max(node(4).x,node(6).x));
+    node(5).y=st.measure.wb;
+    return;
+  }
+  const p=node(id);
+  p.x=clamp(x,st.roi.x,st.roi.x+st.roi.w);
+  p.y=clamp(y,st.roi.y,st.roi.y+st.roi.h);
+  if(id===1)st.measure.wa=p.y;
+  if([3,7,10].includes(id))st.measure.wc=p.y;
+  if([6,11,12].includes(id))st.measure.wb=p.y;
+  syncY();
+  node(5).y=st.measure.wb;
+}
+
+function dragMeasureY(k,y){
+  const old=st.measure[k];
+  st.measure[k]=clamp(y,st.roi.y,st.roi.y+st.roi.h);
+  if(k==='shoulder'){
+    const dy=st.measure[k]-old;
+    st.measure.oxBottom=clamp(st.measure.oxBottom+dy,st.roi.y,st.roi.y+st.roi.h);
+  }
+  syncY();
+}
+
+function drawProfile(){
+  const r=profCanvas.getBoundingClientRect();
+  pctx.clearRect(0,0,r.width,r.height);
+  pctx.fillStyle='white';pctx.fillRect(0,0,r.width,r.height);
+  pctx.strokeStyle='#d7dde4';pctx.strokeRect(.5,.5,r.width-1,r.height-1);
+  if(!st.measure)return;
+  const pad=22,gap=14,half=(r.height-pad*2-gap)/2;
+  const plot=(prof,y,label,marks,y0,h)=>{
+    if(!prof)return;
+    let lo=1e9,hi=-1e9;for(const a of prof.v){lo=Math.min(lo,a);hi=Math.max(hi,a)}
+    const plotW=st.roi?Math.max(80,Math.min(r.width-pad*2,st.roi.w*st.view.s)):r.width-pad*2;
+    const xs=plotW/(prof.v.length-1),ys=h/Math.max(1,hi-lo);
+    pctx.strokeStyle='#d7dde4';pctx.strokeRect(pad,y0,plotW,h);
+    pctx.fillStyle='#111';pctx.font='12px Segoe UI';pctx.fillText(label,pad+4,y0+13);
+    pctx.strokeStyle='#2c6da3';pctx.lineWidth=2;pctx.beginPath();
+    for(let i=0;i<prof.v.length;i++){
+      const xx=pad+i*xs,yy=y0+h-(prof.v[i]-lo)*ys;
+      i?pctx.lineTo(xx,yy):pctx.moveTo(xx,yy);
+    }
+    pctx.stroke();
+    for(const [x,col,lab] of marks){
+      const sx=pad+(x-prof.x0)*xs;
+      pctx.strokeStyle=col;pctx.beginPath();pctx.moveTo(sx,y0);pctx.lineTo(sx,y0+h);pctx.stroke();
+      pctx.fillStyle=col;pctx.fillText(lab,sx+4,y0+25);
+    }
+    return{lo,hi,row:y};
+  };
+  const wc=profileAt(st.measure.wc),wb=profileAt(st.measure.wb);
+  const a=plot(wc,st.measure.wc,'WC profile',st.nodes?[[node(3).x,'#d11f3a','L'],[node(7).x,'#009b72','R'],[node(10).x,'#009b72','O']]:[],pad,half);
+  const b=plot(wb,st.measure.wb,'WB profile',st.nodes?[[node(4).x,'#d11f3a','4'],[node(5).x,'#ff9826','5'],[node(6).x,'#009b72','6']]:[],pad+half+gap,half);
+  $('pinfo').innerHTML=`<span class="badge">Profile</span>WC and WB horizontal profiles<br>WC y=${Math.round(st.measure.wc)} px<br>WB y=${Math.round(st.measure.wb)} px`;
+}
+
+function drawMeasureLines(){
+  if(!st.roi||!st.measure)return;
+  const m=st.measure,xs=i2s(st.roi.x,0).x,xe=i2s(st.roi.x+st.roi.w,0).x;
+  ctx.save();ctx.strokeStyle='#111';ctx.fillStyle='#111';ctx.lineWidth=1.4;ctx.font='12px Segoe UI';ctx.setLineDash([6,5]);
+  let rows=[['wa','WA'],['wc','WC'],['wb','WB'],['pitch','Pitch'],['heightTop','H top'],['heightBottom','H bottom']];
+  if(hasOxide())rows=rows.concat([['oxTop','Ox top'],['oxBottom','Ox bottom'],['shoulder','Hc']]);
+  for(const [k,lab] of rows){const y=i2s(0,m[k]).y;ctx.beginPath();ctx.moveTo(xs,y);ctx.lineTo(xe,y);ctx.stroke();ctx.fillText(lab,xs+8,y-4)}
+  ctx.setLineDash([]);
+  if(st.nodes){
+    line(node(2).x,m.wa,node(8).x,m.wa,'WA');
+    line(node(3).x,m.wc,node(7).x,m.wc,'WC');
+    line(node(4).x,m.wb,node(6).x,m.wb,'WB');
+    line(node(1).x,m.pitch,node(9).x,m.pitch,'Pitch');
+    line(node(2).x,m.heightTop,node(2).x,m.heightBottom,'Height');
+    const gs=mesaOxideGeoms();
+    if(gs.length){
+      for(const g of gs){
+        orangeLine(g.topL,g.topY,g.topR,g.topY,'WSiO1');
+        orangeLine(g.botL,g.botY,g.botR,g.botY,'WSiO2');
+        orangeLine(g.botR,g.topY,g.botR,g.botY,'Hox');
+        orangeLine(g.botR,g.shoulderY,g.botR,g.botY,'Hc');
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function metrics(){
+  if(!st.nodes||!st.measure)return null;
+  setOxideDefaults();
+  const u=st.umPerPx||1,ang=(a,b)=>Math.atan((b.x-a.x)/(b.y-a.y))*180/Math.PI;
+  const gs=mesaOxideGeoms(),g=gs[0];
+  return{
+    pitch:Math.abs(node(9).x-node(1).x)*u,
+    height:Math.abs(st.measure.heightBottom-st.measure.heightTop)*u,
+    wa:Math.abs(node(8).x-node(2).x)*u,
+    wc:Math.abs(node(7).x-node(3).x)*u,
+    wb:Math.abs(node(6).x-node(4).x)*u,
+    mesaLeft:Math.abs(node(2).x-node(1).x)*u,
+    mesaRight:Math.abs(node(9).x-node(8).x)*u,
+    alphaL:ang(node(2),node(3)),betaL:ang(node(3),node(4)),
+    alphaR:ang(node(8),node(7)),betaR:ang(node(7),node(6)),
+    outerAlpha:ang(node(9),node(10)),outerBeta:ang(node(10),node(11)),
+    bow:(Math.abs(node(7).x-node(3).x)-((Math.abs(node(8).x-node(2).x)+Math.abs(node(6).x-node(4).x))/2))*u,
+    oxide:hasOxide()?'yes':'no',maskShape:hasOxide()?oxideShape():'',
+    wsio1:hasOxide()&&g?g.topW*u:NaN,wsio2:hasOxide()&&g?g.botW*u:NaN,
+    hox:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.oxTop)*u:NaN,
+    hc:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.shoulder)*u:NaN
+  };
+}
+
+function ensureOxideState(){
+  if(!hasOxide()||!st.nodes||!st.measure)return null;
+  if(!st.oxidePts)st.oxidePts={};
+  const seed=(key,l,r)=>{
+    if(!st.oxidePts[key])st.oxidePts[key]={sL:l,sR:r,bL:l,bR:r};
+  };
+  seed('L',Math.min(node(1).x,node(2).x),Math.max(node(1).x,node(2).x));
+  seed('R',Math.min(node(8).x,node(9).x),Math.max(node(8).x,node(9).x));
+  return st.oxidePts;
+}
+
+function mesaOxideGeoms(){
+  const pts=ensureOxideState();
+  if(!pts)return [];
+  setOxideDefaults();
+  const shape=oxideShape(),m=st.measure;
+  const make=(key,side)=>{
+    const p=pts[key],shoulderL=Math.min(p.sL,p.sR),shoulderR=Math.max(p.sL,p.sR),bottomL=Math.min(p.bL,p.bR),bottomR=Math.max(p.bL,p.bR);
+    const center=(shoulderL+shoulderR)/2,shoulderW=shoulderR-shoulderL;
+    const topFrac=shape==='triangle'?0:(shape==='taper'?.48:.82);
+    const topW=shoulderW*topFrac,topL=center-topW/2,topR=center+topW/2;
+    return{key,side,shape,shoulderL,shoulderR,bottomL,bottomR,botL:bottomL,botR:bottomR,botW:bottomR-bottomL,topL,topR,topW,center,topY:m.oxTop,botY:m.oxBottom,shoulderY:m.shoulder};
+  };
+  return [make('L','L-mesa'),make('R','R-mesa')].filter(g=>g.botW>2);
+}
+
+function oxideGeom(){return mesaOxideGeoms()[0]||null}
+
+function drawOneOxide(g){
+  const rectPts=[[g.shoulderL,g.shoulderY],[g.shoulderR,g.shoulderY],[g.bottomR,g.botY],[g.bottomL,g.botY]];
+  const capPts=g.shape==='triangle'
+    ? [[g.center,g.topY],[g.shoulderR,g.shoulderY],[g.shoulderL,g.shoulderY]]
+    : [[g.topL,g.topY],[g.topR,g.topY],[g.shoulderR,g.shoulderY],[g.shoulderL,g.shoulderY]];
+  const drawPoly=pts=>{
+    ctx.beginPath();
+    pts.forEach(([x,y],i)=>{const p=i2s(x,y);i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});
+    ctx.closePath();ctx.fill();ctx.stroke();
+  };
+  drawPoly(rectPts);
+  drawPoly(capPts);
+}
+
+function drawOxideMask(){
+  const gs=mesaOxideGeoms();
+  if(!gs.length)return;
+  ctx.save();
+  ctx.fillStyle='rgba(255,153,38,.22)';
+  ctx.strokeStyle='#ff9826';
+  ctx.lineWidth=2;
+  ctx.setLineDash([8,4]);
+  for(const g of gs)drawOneOxide(g);
+  ctx.setLineDash([]);
+  ctx.strokeStyle='#ff9826';
+  ctx.fillStyle='#ff9826';
+  ctx.lineWidth=1.6;
+  for(const g of gs){
+    const handles=[[g.shoulderL,g.shoulderY],[g.shoulderR,g.shoulderY],[g.bottomL,g.botY],[g.bottomR,g.botY]];
+    const l=i2s(g.shoulderL,g.shoulderY),r=i2s(g.shoulderR,g.shoulderY);
+    ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(r.x,r.y);ctx.stroke();
+    for(const [x,y] of handles){const p=i2s(x,y);ctx.beginPath();ctx.arc(p.x,p.y,5,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.stroke();ctx.strokeStyle='#ff9826'}
+  }
+  ctx.font='12px Segoe UI';
+  const g=gs[0],a=i2s(g.shoulderL,g.topY);
+  ctx.fillText('SiO2 '+g.shape,a.x+6,a.y-8);
+  ctx.restore();
+}
+
+function oxideHit(m){
+  const gs=mesaOxideGeoms();
+  const names=[['sL','shoulderL','shoulderY'],['sR','shoulderR','shoulderY'],['bL','bottomL','botY'],['bR','bottomR','botY']];
+  for(const g of gs){
+    for(const [handle,xk,yk] of names){
+      const p=i2s(g[xk],g[yk]);
+      if(Math.hypot(p.x-m.sx,p.y-m.sy)<10)return{type:'oxidePoint',key:g.key,handle};
+    }
+  }
+  return null;
+}
+
+function hitTest(m){
+  const oh=oxideHit(m);if(oh)return oh;
+  if(st.nodes){for(const p of st.nodes){const s=i2s(p.x,p.y);if(Math.hypot(s.x-m.sx,s.y-m.sy)<12)return{type:'node',id:p.id}}}
+  if(st.roi&&st.yProfileX!=null&&m.y>=st.roi.y&&m.y<=st.roi.y+st.roi.h){const x=i2s(st.yProfileX,0).x;if(Math.abs(m.sx-x)<9)return{type:'yProfileX'}}
+  if(st.measure&&st.roi){let keys=['wa','wc','wb','pitch','heightTop','heightBottom'];if(hasOxide())keys=keys.concat(['oxTop','oxBottom','shoulder']);for(const k of keys){const y=i2s(0,st.measure[k]).y;if(Math.abs(m.sy-y)<8)return{type:'measureY',key:k}}}
+  return null;
+}
+
+function dragOxidePoint(d,x,y){
+  const pts=ensureOxideState();if(!pts)return;
+  const p=pts[d.key],oldX=p[d.handle],oldShoulder=st.measure.shoulder,oldBottom=st.measure.oxBottom;
+  const nx=clamp(x,st.roi.x,st.roi.x+st.roi.w),ny=clamp(y,st.roi.y,st.roi.y+st.roi.h);
+  if(d.handle==='sL'||d.handle==='sR'){
+    const dx=nx-oldX,dy=ny-oldShoulder;
+    p[d.handle]=nx;
+    p[d.handle==='sL'?'bL':'bR']=clamp(p[d.handle==='sL'?'bL':'bR']+dx,st.roi.x,st.roi.x+st.roi.w);
+    st.measure.shoulder=clamp(oldShoulder+dy,st.roi.y,st.roi.y+st.roi.h);
+    st.measure.oxBottom=clamp(oldBottom+dy,st.roi.y,st.roi.y+st.roi.h);
+  }else{
+    p[d.handle]=nx;
+    st.measure.oxBottom=ny;
+  }
+}
+
+canvas.onmousemove=e=>{
+  if(!st.img)return;const m=mouse(e);
+  if(st.pan){st.view.ox=st.pan.ox+m.sx-st.pan.sx;st.view.oy=st.pan.oy+m.sy-st.pan.sy;draw();return}
+  if(st.drag?.type==='cal'){st.cal.x2=m.x;st.cal.y2=m.y;updateCal();draw();return}
+  if(st.drag?.type==='roi'){const s=st.drag.start;st.roi={x:Math.min(s.x,m.x),y:Math.min(s.y,m.y),w:Math.abs(m.x-s.x),h:Math.abs(m.y-s.y)};draw();return}
+  if(st.drag?.type==='yProfileX'){st.yProfileX=clamp(m.x,st.roi.x,st.roi.x+st.roi.w);st.yProfile=verticalProfileAtX(st.yProfileX);draw();drawProfile();return}
+  if(st.drag?.type==='oxidePoint'){dragOxidePoint(st.drag,m.x,m.y);updateMetrics();draw();drawProfile();return}
+  if(st.drag?.type==='node'){dragNode(st.drag.id,m.x,m.y);updateMetrics();draw();drawProfile();return}
+  if(st.drag?.type==='measureY'){dragMeasureY(st.drag.key,m.y);updateMetrics();draw();drawProfile();return}
+};
+
+function line(x1,y1,x2,y2,lab){
+  const a=i2s(x1,y1),b=i2s(x2,y2),mx=(a.x+b.x)/2,my=(a.y+b.y)/2+(lab==='WB'?-16:0);
+  ctx.strokeStyle='#111';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  ctx.save();
+  ctx.font='12px Segoe UI';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  const tw=ctx.measureText(lab).width+10,th=16;
+  ctx.fillStyle='rgba(255,255,255,.88)';
+  ctx.fillRect(mx-tw/2,my-th/2,tw,th);
+  ctx.fillStyle='#111';
+  ctx.fillText(lab,mx,my);
+  ctx.restore();
+}
+
+function ensureOxideState(){
+  if(!hasOxide()||!st.nodes||!st.measure)return null;
+  if(!st.oxidePts)st.oxidePts={};
+  if(!st.oxidePts.R){
+    const l=Math.min(node(8).x,node(9).x),r=Math.max(node(8).x,node(9).x);
+    st.oxidePts.R={sL:l,sR:r,bL:l,bR:r};
+  }
+  delete st.oxidePts.L;
+  return st.oxidePts;
+}
+
+function mesaOxideGeoms(){
+  const pts=ensureOxideState();
+  if(!pts)return [];
+  setOxideDefaults();
+  const shape=oxideShape(),m=st.measure,p=pts.R;
+  const shoulderL=Math.min(p.sL,p.sR),shoulderR=Math.max(p.sL,p.sR),bottomL=Math.min(p.bL,p.bR),bottomR=Math.max(p.bL,p.bR);
+  const center=(shoulderL+shoulderR)/2,shoulderW=shoulderR-shoulderL;
+  const topFrac=shape==='triangle'?0:(shape==='taper'?.48:.82);
+  const topW=shoulderW*topFrac,topL=center-topW/2,topR=center+topW/2;
+  return [{key:'R',side:'R-mesa',shape,shoulderL,shoulderR,bottomL,bottomR,botL:bottomL,botR:bottomR,botW:bottomR-bottomL,topL,topR,topW,center,topY:m.oxTop,botY:m.oxBottom,shoulderY:m.shoulder}].filter(g=>g.botW>2);
+}
+
+function oxideGeom(){return mesaOxideGeoms()[0]||null}
+
+function setBottomY(y){
+  st.measure.wb=clamp(y,st.roi.y,st.roi.y+st.roi.h);
+  for(const id of [4,5,6])node(id).y=st.measure.wb;
+}
+
+function dragNode(id,x,y){
+  if([2,8,9].includes(id)){moveColumn(id,x,y);return}
+  if(id===4||id===6){
+    const p=node(id);
+    p.x=clamp(x,st.roi.x,st.roi.x+st.roi.w);
+    setBottomY(y);
+    node(5).x=clamp(node(5).x,Math.min(node(4).x,node(6).x),Math.max(node(4).x,node(6).x));
+    return;
+  }
+  if(id===5){
+    node(5).x=clamp(x,Math.min(node(4).x,node(6).x),Math.max(node(4).x,node(6).x));
+    node(5).y=clamp(y,st.roi.y,st.roi.y+st.roi.h);
+    return;
+  }
+  const p=node(id);
+  p.x=clamp(x,st.roi.x,st.roi.x+st.roi.w);
+  p.y=clamp(y,st.roi.y,st.roi.y+st.roi.h);
+  if(id===1)st.measure.wa=p.y;
+  if([3,7,10].includes(id))st.measure.wc=p.y;
+  if([11,12].includes(id))st.measure.wb=p.y;
+  syncY();
+}
+
+function drawMeasureLines(){
+  if(!st.roi||!st.measure)return;
+  const m=st.measure,xs=i2s(st.roi.x,0).x,xe=i2s(st.roi.x+st.roi.w,0).x;
+  ctx.save();ctx.strokeStyle='#111';ctx.fillStyle='#111';ctx.lineWidth=1.4;ctx.font='12px Segoe UI';ctx.setLineDash([6,5]);
+  let rows=[['wa','WA'],['wc','WC'],['wb','WB'],['pitch','Pitch'],['heightTop','H top'],['heightBottom','H bottom']];
+  if(hasOxide())rows=rows.concat([['oxTop','Ox top'],['oxBottom','Ox bottom'],['shoulder','Hc']]);
+  for(const [k,lab] of rows){const y=i2s(0,m[k]).y;ctx.beginPath();ctx.moveTo(xs,y);ctx.lineTo(xe,y);ctx.stroke();ctx.fillText(lab,xs+8,y-4)}
+  ctx.setLineDash([]);
+  if(st.nodes){
+    line(node(2).x,m.wa,node(8).x,m.wa,'WA');
+    line(node(3).x,m.wc,node(7).x,m.wc,'WC');
+    line(node(4).x,m.wb,node(6).x,m.wb,'WB');
+    line(node(1).x,m.pitch,node(9).x,m.pitch,'Pitch');
+    line(node(2).x,m.heightTop,node(2).x,m.heightBottom,'Height');
+    for(const g of mesaOxideGeoms()){
+      orangeLine(g.topL,g.topY,g.topR,g.topY,'WSiO1');
+      orangeLine(g.botL,g.botY,g.botR,g.botY,'WSiO2');
+      orangeLine(g.botR,g.topY,g.botR,g.botY,'Hox');
+      orangeLine(g.botR,g.shoulderY,g.botR,g.botY,'Hc');
+    }
+  }
+  ctx.restore();
+}
+
+function imageClampX(x){return st.gray?clamp(x,0,st.gray.w-1):x}
+function imageClampY(y){return st.gray?clamp(y,0,st.gray.h-1):y}
+
+function ensureOxideState(){
+  if(!hasOxide()||!st.nodes||!st.measure)return null;
+  if(!st.oxidePts)st.oxidePts={};
+  if(!st.oxidePts.R){
+    const sL=Math.min(node(8).x,node(9).x),sR=Math.max(node(8).x,node(9).x);
+    const c=(sL+sR)/2,w=sR-sL;
+    st.oxidePts.R={tL:c-w*.24,tR:c+w*.24,sL,sR,bL:sL,bR:sR};
+  }
+  delete st.oxidePts.L;
+  return st.oxidePts;
+}
+
+function mesaOxideGeoms(){
+  const pts=ensureOxideState();
+  if(!pts)return [];
+  setOxideDefaults();
+  const p=pts.R,m=st.measure,shape=oxideShape();
+  const topL=Math.min(p.tL,p.tR),topR=Math.max(p.tL,p.tR),shoulderL=Math.min(p.sL,p.sR),shoulderR=Math.max(p.sL,p.sR),bottomL=Math.min(p.bL,p.bR),bottomR=Math.max(p.bL,p.bR);
+  return [{key:'R',side:'oxide',shape,topL,topR,topW:topR-topL,shoulderL,shoulderR,bottomL,bottomR,botL:bottomL,botR:bottomR,botW:bottomR-bottomL,center:(topL+topR)/2,topY:m.oxTop,shoulderY:m.shoulder,botY:m.oxBottom}].filter(g=>g.botW>2);
+}
+
+function oxideGeom(){return mesaOxideGeoms()[0]||null}
+
+function drawOneOxide(g){
+  const rectPts=[[g.shoulderL,g.shoulderY],[g.shoulderR,g.shoulderY],[g.bottomR,g.botY],[g.bottomL,g.botY]];
+  const capPts=[[g.topL,g.topY],[g.topR,g.topY],[g.shoulderR,g.shoulderY],[g.shoulderL,g.shoulderY]];
+  const drawPoly=pts=>{
+    ctx.beginPath();
+    pts.forEach(([x,y],i)=>{const p=i2s(x,y);i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});
+    ctx.closePath();ctx.fill();ctx.stroke();
+  };
+  drawPoly(rectPts);
+  drawPoly(capPts);
+}
+
+function drawOxideMask(){
+  const gs=mesaOxideGeoms();
+  if(!gs.length)return;
+  ctx.save();
+  ctx.fillStyle='rgba(255,153,38,.18)';
+  ctx.strokeStyle='#ff9826';
+  ctx.lineWidth=2;
+  ctx.setLineDash([8,4]);
+  for(const g of gs)drawOneOxide(g);
+  ctx.setLineDash([]);
+  ctx.fillStyle='#ff9826';
+  ctx.strokeStyle='#fff';
+  ctx.lineWidth=1.3;
+  for(const g of gs){
+    const handles=[[g.topL,g.topY],[g.topR,g.topY],[g.shoulderL,g.shoulderY],[g.shoulderR,g.shoulderY],[g.bottomL,g.botY],[g.bottomR,g.botY]];
+    for(const [x,y] of handles){const p=i2s(x,y);ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill();ctx.stroke()}
+  }
+  ctx.restore();
+}
+
+function oxideHit(m){
+  const gs=mesaOxideGeoms();
+  const names=[['tL','topL','topY'],['tR','topR','topY'],['sL','shoulderL','shoulderY'],['sR','shoulderR','shoulderY'],['bL','bottomL','botY'],['bR','bottomR','botY']];
+  for(const g of gs){
+    for(const [handle,xk,yk] of names){
+      const p=i2s(g[xk],g[yk]);
+      if(Math.hypot(p.x-m.sx,p.y-m.sy)<10)return{type:'oxidePoint',key:g.key,handle};
+    }
+  }
+  return null;
+}
+
+function dragOxidePoint(d,x,y){
+  const pts=ensureOxideState();if(!pts)return;
+  const p=pts[d.key],nx=imageClampX(x),ny=imageClampY(y);
+  if(d.handle==='tL'||d.handle==='tR'){
+    p[d.handle]=nx;
+    st.measure.oxTop=ny;
+    return;
+  }
+  if(d.handle==='sL'||d.handle==='sR'){
+    const oldX=p[d.handle],oldY=st.measure.shoulder,dx=nx-oldX,dy=ny-oldY;
+    p[d.handle]=nx;
+    p[d.handle==='sL'?'bL':'bR']=imageClampX(p[d.handle==='sL'?'bL':'bR']+dx);
+    st.measure.shoulder=imageClampY(oldY+dy);
+    st.measure.oxBottom=imageClampY(st.measure.oxBottom+dy);
+    return;
+  }
+  p[d.handle]=nx;
+  st.measure.oxBottom=ny;
+}
+
+function hitTest(m){
+  const oh=oxideHit(m);if(oh)return oh;
+  if(st.nodes){for(const p of st.nodes){const s=i2s(p.x,p.y);if(Math.hypot(s.x-m.sx,s.y-m.sy)<12)return{type:'node',id:p.id}}}
+  if(st.roi&&st.yProfileX!=null&&m.y>=st.roi.y&&m.y<=st.roi.y+st.roi.h){const x=i2s(st.yProfileX,0).x;if(Math.abs(m.sx-x)<9)return{type:'yProfileX'}}
+  if(st.measure&&st.roi){for(const k of ['wa','wc','wb','pitch','heightTop','heightBottom']){const y=i2s(0,st.measure[k]).y;if(Math.abs(m.sy-y)<8)return{type:'measureY',key:k}}}
+  return null;
+}
+
+function drawMeasureLines(){
+  if(!st.roi||!st.measure)return;
+  const m=st.measure,xs=i2s(st.roi.x,0).x,xe=i2s(st.roi.x+st.roi.w,0).x;
+  ctx.save();ctx.strokeStyle='#111';ctx.fillStyle='#111';ctx.lineWidth=1.4;ctx.font='12px Segoe UI';ctx.setLineDash([6,5]);
+  const rows=[['wa','WA'],['wc','WC'],['wb','WB'],['pitch','Pitch'],['heightTop','H top'],['heightBottom','H bottom']];
+  for(const [k,lab] of rows){const y=i2s(0,m[k]).y;ctx.beginPath();ctx.moveTo(xs,y);ctx.lineTo(xe,y);ctx.stroke();ctx.fillText(lab,xs+8,y-4)}
+  ctx.setLineDash([]);
+  if(st.nodes){
+    line(node(2).x,m.wa,node(8).x,m.wa,'WA');
+    line(node(3).x,m.wc,node(7).x,m.wc,'WC');
+    line(node(4).x,m.wb,node(6).x,m.wb,'WB');
+    line(node(1).x,m.pitch,node(9).x,m.pitch,'Pitch');
+    line(node(2).x,m.heightTop,node(2).x,m.heightBottom,'Height');
+    for(const g of mesaOxideGeoms()){
+      orangeLine(g.topL,g.topY,g.topR,g.topY,'WSiO1');
+      orangeLine(g.bottomL,g.botY,g.bottomR,g.botY,'WSiO2');
+      orangeLine(g.bottomR,g.topY,g.bottomR,g.botY,'Hox');
+      orangeLine(g.bottomR,g.shoulderY,g.bottomR,g.botY,'Hc');
+    }
+  }
+  ctx.restore();
+}
+
+function metrics(){
+  if(!st.nodes||!st.measure)return null;
+  setOxideDefaults();
+  const u=st.umPerPx||1,ang=(a,b)=>Math.atan((b.x-a.x)/(b.y-a.y))*180/Math.PI,segAng=(x1,y1,x2,y2)=>Math.atan((x2-x1)/(y2-y1))*180/Math.PI;
+  const g=mesaOxideGeoms()[0];
+  return{
+    pitch:Math.abs(node(9).x-node(1).x)*u,height:Math.abs(st.measure.heightBottom-st.measure.heightTop)*u,
+    wa:Math.abs(node(8).x-node(2).x)*u,wc:Math.abs(node(7).x-node(3).x)*u,wb:Math.abs(node(6).x-node(4).x)*u,
+    mesaLeft:Math.abs(node(2).x-node(1).x)*u,mesaRight:Math.abs(node(9).x-node(8).x)*u,
+    alphaL:ang(node(2),node(3)),betaL:ang(node(3),node(4)),alphaR:ang(node(8),node(7)),betaR:ang(node(7),node(6)),
+    outerAlpha:ang(node(9),node(10)),outerBeta:ang(node(10),node(11)),
+    bow:(Math.abs(node(7).x-node(3).x)-((Math.abs(node(8).x-node(2).x)+Math.abs(node(6).x-node(4).x))/2))*u,
+    oxide:hasOxide()?'yes':'no',maskShape:hasOxide()?oxideShape():'',
+    wsio1:hasOxide()&&g?g.topW*u:NaN,wsio2:hasOxide()&&g?g.botW*u:NaN,
+    hox:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.oxTop)*u:NaN,hc:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.shoulder)*u:NaN,
+    oxLeftTopAngle:hasOxide()&&g?segAng(g.topL,g.topY,g.shoulderL,g.shoulderY):NaN,
+    oxLeftShoulderAngle:hasOxide()&&g?segAng(g.shoulderL,g.shoulderY,g.bottomL,g.botY):NaN
+  };
+}
+
+function updateMetrics(){
+  const m=metrics();if(!m){$('metrics').textContent='No measurement.';return}
+  const unit=st.umPerPx?'um':'px';
+  let html=`<span class="badge">${st.umPerPx?'scale '+fmt(st.umPerPx,5)+' um/px':'not calibrated, px'}</span><br>Pitch: ${fmt(m.pitch)} ${unit}<br>Height: ${fmt(m.height)} ${unit}<br>WA / WC / WB: ${fmt(m.wa)} / ${fmt(m.wc)} / ${fmt(m.wb)} ${unit}<br>Left/Right mesa: ${fmt(m.mesaLeft)} / ${fmt(m.mesaRight)} ${unit}<br>aL / bL: ${fmt(m.alphaL,2)} / ${fmt(m.betaL,2)} deg<br>aR / bR: ${fmt(m.alphaR,2)} / ${fmt(m.betaR,2)} deg<br>Outer 9 / 10: ${fmt(m.outerAlpha,2)} / ${fmt(m.outerBeta,2)} deg<br>Bowing: ${fmt(m.bow)} ${unit}`;
+  if(hasOxide())html+=`<br><br><span class="badge">SiO2</span><br>WSiO1 / WSiO2: ${fmt(m.wsio1)} / ${fmt(m.wsio2)} ${unit}<br>Hox / Hc: ${fmt(m.hox)} / ${fmt(m.hc)} ${unit}<br>Left top / shoulder angle: ${fmt(m.oxLeftTopAngle,2)} / ${fmt(m.oxLeftShoulderAngle,2)} deg`;
+  $('metrics').innerHTML=html;
+}
+
+function drawSegments(){
+  if(!st.nodes)return;
+  const segs=[[1,2,'#d11f3a'],[2,3,'#d11f3a'],[3,4,'#d11f3a'],[4,5,'#d11f3a'],[5,6,'#009b72'],[6,7,'#009b72'],[7,8,'#009b72'],[8,9,'#009b72'],[9,10,'#009b72'],[10,11,'#009b72']];
+  ctx.save();
+  for(const [aId,bId,col] of segs){
+    const a=node(aId),b=node(bId),as=i2s(a.x,a.y),bs=i2s(b.x,b.y);
+    ctx.strokeStyle=col;ctx.lineWidth=2.8;
+    ctx.beginPath();ctx.moveTo(as.x,as.y);ctx.lineTo(bs.x,bs.y);ctx.stroke();
+  }
+  for(const p of st.nodes){
+    const s=i2s(p.x,p.y);
+    ctx.fillStyle='#1e88ff';ctx.strokeStyle='#fff';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(s.x,s.y,6,0,7);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#064a96';ctx.font='12px Segoe UI';ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.fillText(String(p.id),s.x,s.y-9);
+  }
+  ctx.restore();
+}
+
+function rotDeg(){return clamp(parseFloat($('rot')?.value||0),-5,5)}
+function rotRad(){return rotDeg()*Math.PI/180}
+
+function i2s(x,y){
+  if(!st.img)return{x:x*st.view.s+st.view.ox,y:y*st.view.s+st.view.oy};
+  const cx=st.img.width/2,cy=st.img.height/2,a=rotRad(),c=Math.cos(a),s=Math.sin(a);
+  const dx=x-cx,dy=y-cy;
+  return{x:st.view.ox+(cx+dx*c-dy*s)*st.view.s,y:st.view.oy+(cy+dx*s+dy*c)*st.view.s};
+}
+
+function s2i(x,y){
+  if(!st.img)return{x:(x-st.view.ox)/st.view.s,y:(y-st.view.oy)/st.view.s};
+  const cx=st.img.width/2,cy=st.img.height/2,a=rotRad(),c=Math.cos(a),s=Math.sin(a);
+  const ux=(x-st.view.ox)/st.view.s-cx,uy=(y-st.view.oy)/st.view.s-cy;
+  return{x:cx+ux*c+uy*s,y:cy-ux*s+uy*c};
+}
+
+function drawRotatedImage(){
+  const cx=st.img.width/2,cy=st.img.height/2,a=rotRad();
+  ctx.save();
+  ctx.translate(st.view.ox+cx*st.view.s,st.view.oy+cy*st.view.s);
+  ctx.rotate(a);
+  ctx.drawImage(st.img,-cx*st.view.s,-cy*st.view.s,st.img.width*st.view.s,st.img.height*st.view.s);
+  ctx.restore();
+}
+
+function drawRoi(){
+  if(!st.roi)return;
+  const corners=[
+    i2s(st.roi.x,st.roi.y),
+    i2s(st.roi.x+st.roi.w,st.roi.y),
+    i2s(st.roi.x+st.roi.w,st.roi.y+st.roi.h),
+    i2s(st.roi.x,st.roi.y+st.roi.h)
+  ];
+  ctx.save();
+  ctx.strokeStyle='#2d9cff';ctx.setLineDash([7,5]);ctx.lineWidth=2;
+  ctx.beginPath();
+  corners.forEach((p,i)=>{i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});
+  ctx.closePath();ctx.stroke();
+  ctx.restore();
+}
+
+function draw(){
+  const r=stage.getBoundingClientRect();
+  ctx.clearRect(0,0,r.width,r.height);
+  if(!st.img){ctx.fillStyle='#101820';ctx.fillRect(0,0,r.width,r.height);return}
+  ctx.imageSmoothingEnabled=false;
+  drawRotatedImage();
+  drawMainYProfile();
+  drawCal();drawRoi();drawYProfileGuide();drawOxideMask();drawMeasureLines();drawSegments();
+}
+
+$('rot').oninput=()=>{
+  const v=rotDeg();
+  $('rot').value=Number.isFinite(v)?v:0;
+  draw();drawProfile();
+};
+
+function drawMeasureLines(){
+  if(!st.roi||!st.measure)return;
+  const m=st.measure;
+  ctx.save();ctx.strokeStyle='#111';ctx.fillStyle='#111';ctx.lineWidth=1.4;ctx.font='12px Segoe UI';ctx.setLineDash([6,5]);
+  const rows=[['wa','WA'],['wc','WC'],['wb','WB'],['pitch','Pitch'],['heightTop','H top'],['heightBottom','H bottom']];
+  for(const [k,lab] of rows){
+    const a=i2s(st.roi.x,m[k]),b=i2s(st.roi.x+st.roi.w,m[k]);
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    ctx.fillText(lab,a.x+8,a.y-4);
+  }
+  ctx.setLineDash([]);
+  if(st.nodes){
+    line(node(2).x,m.wa,node(8).x,m.wa,'WA');
+    line(node(3).x,m.wc,node(7).x,m.wc,'WC');
+    line(node(4).x,m.wb,node(6).x,m.wb,'WB');
+    line(node(1).x,m.pitch,node(9).x,m.pitch,'Pitch');
+    line(node(2).x,m.heightTop,node(2).x,m.heightBottom,'Height');
+    for(const g of mesaOxideGeoms()){
+      orangeLine(g.topL,g.topY,g.topR,g.topY,'WSiO1');
+      orangeLine(g.bottomL,g.botY,g.bottomR,g.botY,'WSiO2');
+      orangeLine(g.bottomR,g.topY,g.bottomR,g.botY,'Hox');
+      orangeLine(g.bottomR,g.shoulderY,g.bottomR,g.botY,'Hc');
+    }
+  }
+  ctx.restore();
+}
+
+function i2s(x,y){return{x:x*st.view.s+st.view.ox,y:y*st.view.s+st.view.oy}}
+function s2i(x,y){return{x:(x-st.view.ox)/st.view.s,y:(y-st.view.oy)/st.view.s}}
+
+function rebuildRotatedImage(){
+  if(!st.baseImg)return;
+  const deg=clamp(parseFloat($('rot')?.value||0),-5,5);
+  $('rot').value=Number.isFinite(deg)?deg:0;
+  const a=deg*Math.PI/180,src=st.baseImg;
+  const off=document.createElement('canvas');
+  off.width=src.width;off.height=src.height;
+  const o=off.getContext('2d',{willReadFrequently:true});
+  o.fillStyle='#101820';o.fillRect(0,0,off.width,off.height);
+  o.translate(off.width/2,off.height/2);
+  o.rotate(a);
+  o.drawImage(src,-src.width/2,-src.height/2);
+  st.img=off;
+  makeGray();
+}
+
+function draw(){
+  const r=stage.getBoundingClientRect();
+  ctx.clearRect(0,0,r.width,r.height);
+  if(!st.img){ctx.fillStyle='#101820';ctx.fillRect(0,0,r.width,r.height);return}
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(st.img,st.view.ox,st.view.oy,st.img.width*st.view.s,st.img.height*st.view.s);
+  drawMainYProfile();
+  drawCal();drawRoi();drawYProfileGuide();drawOxideMask();drawMeasureLines();drawSegments();
+}
+
+function drawRoi(){
+  if(!st.roi)return;
+  const p=i2s(st.roi.x,st.roi.y);
+  ctx.save();ctx.strokeStyle='#2d9cff';ctx.setLineDash([7,5]);ctx.lineWidth=2;
+  ctx.strokeRect(p.x,p.y,st.roi.w*st.view.s,st.roi.h*st.view.s);
+  ctx.restore();
+}
+
+$('rot').oninput=()=>{
+  rebuildRotatedImage();
+  draw();drawProfile();
+};
+
+$('file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f),img=new Image();
+  img.onload=()=>{
+    st.baseImg=img;
+    st.name=f.name;
+    if($('csvname'))$('csvname').value=fileBaseName(st.name)+'_trenchv2.csv';
+    st.roi=null;st.yProfileX=null;st.yProfile=null;st.nodes=null;st.measure=null;st.oxidePts=null;st.rows=[];
+    st.cal=null;st.umPerPx=null;
+    rebuildRotatedImage();
+    fit();renderRows();
+    URL.revokeObjectURL(url);
+    $('hint').textContent='Image loaded. Use Rot to level image, then set scale and draw ROI.';
+  };
+  img.src=url;
+};
+
+function drawMeasureLines(){
+  if(!st.roi||!st.measure)return;
+  const m=st.measure,xs=i2s(st.roi.x,0).x,xe=i2s(st.roi.x+st.roi.w,0).x;
+  ctx.save();ctx.strokeStyle='#111';ctx.fillStyle='#111';ctx.lineWidth=1.4;ctx.font='12px Segoe UI';ctx.setLineDash([6,5]);
+  const rows=[['wa','WA'],['wc','WC'],['wb','WB'],['heightTop','H top'],['heightBottom','H bottom']];
+  for(const [k,lab] of rows){const y=i2s(0,m[k]).y;ctx.beginPath();ctx.moveTo(xs,y);ctx.lineTo(xe,y);ctx.stroke();ctx.fillText(lab,xs+8,y-4)}
+  ctx.setLineDash([]);
+  if(st.nodes){
+    line(node(2).x,m.wa,node(8).x,m.wa,'WA');
+    line(node(3).x,m.wc,node(7).x,m.wc,'WC');
+    line(node(4).x,m.wb,node(6).x,m.wb,'WB');
+    line(node(2).x,m.heightTop,node(2).x,m.heightBottom,'Height');
+    for(const g of mesaOxideGeoms()){
+      orangeLine(g.topL,g.topY,g.topR,g.topY,'WSiO1');
+      orangeLine(g.bottomL,g.botY,g.bottomR,g.botY,'WSiO2');
+      orangeLine(g.bottomR,g.topY,g.bottomR,g.botY,'Hox');
+      orangeLine(g.bottomR,g.shoulderY,g.bottomR,g.botY,'Hc');
+    }
+  }
+  ctx.restore();
+}
+
+function metrics(){
+  if(!st.nodes||!st.measure)return null;
+  setOxideDefaults();
+  const u=st.umPerPx||1,ang=(a,b)=>Math.atan((b.x-a.x)/(b.y-a.y))*180/Math.PI,segAng=(x1,y1,x2,y2)=>Math.atan((x2-x1)/(y2-y1))*180/Math.PI;
+  const pitchPx=(Math.abs(node(9).x-node(2).x)+Math.abs(node(10).x-node(3).x))/2;
+  const g=mesaOxideGeoms()[0];
+  return{
+    pitch:pitchPx*u,height:Math.abs(st.measure.heightBottom-st.measure.heightTop)*u,
+    wa:Math.abs(node(8).x-node(2).x)*u,wc:Math.abs(node(7).x-node(3).x)*u,wb:Math.abs(node(6).x-node(4).x)*u,
+    mesaLeft:Math.abs(node(2).x-node(1).x)*u,mesaRight:Math.abs(node(9).x-node(8).x)*u,
+    alphaL:ang(node(2),node(3)),betaL:ang(node(3),node(4)),alphaR:ang(node(8),node(7)),betaR:ang(node(7),node(6)),
+    outerAlpha:ang(node(9),node(10)),outerBeta:ang(node(10),node(11)),
+    bow:(Math.abs(node(7).x-node(3).x)-((Math.abs(node(8).x-node(2).x)+Math.abs(node(6).x-node(4).x))/2))*u,
+    oxide:hasOxide()?'yes':'no',maskShape:hasOxide()?oxideShape():'',
+    wsio1:hasOxide()&&g?g.topW*u:NaN,wsio2:hasOxide()&&g?g.botW*u:NaN,
+    hox:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.oxTop)*u:NaN,hc:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.shoulder)*u:NaN,
+    oxLeftTopAngle:hasOxide()&&g?segAng(g.topL,g.topY,g.shoulderL,g.shoulderY):NaN,
+    oxLeftShoulderAngle:hasOxide()&&g?segAng(g.shoulderL,g.shoulderY,g.bottomL,g.botY):NaN
+  };
+}
+
+function metrics(){
+  if(!st.nodes||!st.measure)return null;
+  setOxideDefaults();
+  const u=st.umPerPx||1;
+  const ang=(a,b)=>Math.atan((b.x-a.x)/(b.y-a.y))*180/Math.PI;
+  const segAng=(x1,y1,x2,y2)=>Math.atan((x2-x1)/(y2-y1))*180/Math.PI;
+  const pitchPx=(Math.abs(node(9).x-node(2).x)+Math.abs(node(10).x-node(3).x))/2;
+  const g=mesaOxideGeoms()[0];
+  const trenchHeightPx=Math.abs(node(12).y-node(1).y);
+  const hPx=Math.abs(st.measure.heightBottom-st.measure.heightTop);
+  return{
+    pitch:pitchPx*u,
+    height:trenchHeightPx*u,
+    trenchHeight:trenchHeightPx*u,
+    htr:trenchHeightPx*u,
+    h:hPx*u,
+    wa:Math.abs(node(8).x-node(2).x)*u,
+    wc:Math.abs(node(7).x-node(3).x)*u,
+    wb:Math.abs(node(6).x-node(4).x)*u,
+    mesaLeft:Math.abs(node(2).x-node(1).x)*u,
+    mesaRight:Math.abs(node(9).x-node(8).x)*u,
+    alphaL:ang(node(2),node(3)),betaL:ang(node(3),node(4)),
+    alphaR:ang(node(8),node(7)),betaR:ang(node(7),node(6)),
+    outerAlpha:ang(node(9),node(10)),outerBeta:ang(node(10),node(11)),
+    bow:(Math.abs(node(7).x-node(3).x)-((Math.abs(node(8).x-node(2).x)+Math.abs(node(6).x-node(4).x))/2))*u,
+    oxide:hasOxide()?'yes':'no',maskShape:hasOxide()?oxideShape():'',
+    wsio1:hasOxide()&&g?g.topW*u:NaN,wsio2:hasOxide()&&g?g.botW*u:NaN,
+    hox:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.oxTop)*u:NaN,
+    hc:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.shoulder)*u:NaN,
+    oxLeftTopAngle:hasOxide()&&g?segAng(g.topL,g.topY,g.shoulderL,g.shoulderY):NaN,
+    oxLeftShoulderAngle:hasOxide()&&g?segAng(g.shoulderL,g.shoulderY,g.bottomL,g.botY):NaN
+  };
+}
+
+function updateMetrics(){
+  const m=metrics();if(!m){$('metrics').textContent='No measurement.';return}
+  const unit=st.umPerPx?'um':'px';
+  let html=`<span class="badge">${st.umPerPx?'scale '+fmt(st.umPerPx,5)+' um/px':'not calibrated, px'}</span><br>Pitch: ${fmt(m.pitch)} ${unit}<br>Htr trench depth: ${fmt(m.htr)} ${unit}<br>H line-bottom: ${fmt(m.h)} ${unit}<br>WA / WC / WB: ${fmt(m.wa)} / ${fmt(m.wc)} / ${fmt(m.wb)} ${unit}<br>Left/Right mesa: ${fmt(m.mesaLeft)} / ${fmt(m.mesaRight)} ${unit}<br>aL / bL: ${fmt(m.alphaL,2)} / ${fmt(m.betaL,2)} deg<br>aR / bR: ${fmt(m.alphaR,2)} / ${fmt(m.betaR,2)} deg<br>Outer 9 / 10: ${fmt(m.outerAlpha,2)} / ${fmt(m.outerBeta,2)} deg<br>Bowing: ${fmt(m.bow)} ${unit}`;
+  if(hasOxide())html+=`<br><br><span class="badge">SiO2</span><br>WSiO1 / WSiO2: ${fmt(m.wsio1)} / ${fmt(m.wsio2)} ${unit}<br>Hox / Hc: ${fmt(m.hox)} / ${fmt(m.hc)} ${unit}<br>Left top / shoulder angle: ${fmt(m.oxLeftTopAngle,2)} / ${fmt(m.oxLeftShoulderAngle,2)} deg`;
+  $('metrics').innerHTML=html;
+}
+
+function renderRows(){
+  const table=$('tbl');
+  const head=table.querySelector('thead tr');
+  head.innerHTML='<th>ID</th><th>Pitch</th><th>Htr</th><th>H</th><th>WA</th><th>WC</th><th>WB</th><th>Hox</th><th>Hc</th><th>aL</th><th>bL</th><th>aR</th><th>bR</th>';
+  const tb=table.querySelector('tbody');tb.innerHTML='';
+  for(const m of st.rows){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${m.id}</td><td>${fmt(m.pitch)}</td><td>${fmt(m.htr??m.trenchHeight??m.height)}</td><td>${fmt(m.h)}</td><td>${fmt(m.wa)}</td><td>${fmt(m.wc)}</td><td>${fmt(m.wb)}</td><td>${fmt(m.hox)}</td><td>${fmt(m.hc)}</td><td>${fmt(m.alphaL,2)}</td><td>${fmt(m.betaL,2)}</td><td>${fmt(m.alphaR,2)}</td><td>${fmt(m.betaR,2)}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+$('save').onclick=()=>{const m=metrics();if(!m){alert('No measurement.');return}st.rows.push({id:st.rows.length+1,file:st.name,...m,scale:st.umPerPx||1});renderRows()};
+$('csv').onclick=()=>{if(!st.rows.length){alert('No rows.');return}const cols=['file','id','scale','oxide','mask_shape','pitch','Htr','H','WA','WC','WB','mesa_left','mesa_right','WSiO1','WSiO2','Hox','Hc','alpha_left','beta_left','alpha_right','beta_right','outer_alpha','outer_beta','bowing'];const lines=[cols.join(',')];for(const m of st.rows)lines.push([m.file,m.id,m.scale,m.oxide,m.maskShape,m.pitch,m.htr??m.trenchHeight??m.height,m.h,m.wa,m.wc,m.wb,m.mesaLeft,m.mesaRight,m.wsio1,m.wsio2,m.hox,m.hc,m.alphaL,m.betaL,m.alphaR,m.betaR,m.outerAlpha,m.outerBeta,m.bow].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='trench_measurements_v2.csv';a.click();URL.revokeObjectURL(a.href)}
+
+const ui={folder:null,sideW:390,sideHidden:false};
+
+function fileBaseName(name){
+  return (name||'trench').replace(/\.[^.]+$/,'').replace(/[\\/:*?"<>|]/g,'_');
+}
+
+function installV2Ui(){
+  const style=document.createElement('style');
+  style.textContent=`
+    .app{grid-template-columns:1fr var(--sidew,390px)!important}
+    header{gap:5px!important;padding:5px 8px!important;min-height:54px}
+    header .grp{gap:4px!important;padding-right:5px!important}
+    header button,header .filebtn,header input,header select{height:28px!important;padding:0 7px!important;font-size:13px!important}
+    header .mini{width:58px!important}
+    #csvname{width:118px!important}
+    #sideGrip{position:absolute;top:54px;right:var(--sidew,390px);width:8px;bottom:0;cursor:col-resize;background:rgba(20,119,204,.16);z-index:20}
+    #sideToggle{position:absolute;top:62px;right:calc(var(--sidew,390px) - 28px);z-index:21;width:24px;height:24px;border-radius:4px;padding:0;background:#344150;color:#fff;border:0}
+    body.side-hidden .app{grid-template-columns:1fr 0!important}
+    body.side-hidden aside{display:none}
+    body.side-hidden #sideGrip{right:0}
+    body.side-hidden #sideToggle{right:6px}
+  `;
+  document.head.appendChild(style);
+  document.documentElement.style.setProperty('--sidew',ui.sideW+'px');
+
+  $('save').textContent='Result';
+  $('csv').textContent='CSV save';
+  const resultGroup=$('csv').parentElement;
+  const screenBtn=document.createElement('button');screenBtn.id='screen';screenBtn.textContent='Save screen';
+  const mlBtn=document.createElement('button');mlBtn.id='ml';mlBtn.textContent='MachineLearning';mlBtn.className='green';
+  const folderBtn=document.createElement('button');folderBtn.id='folder';folderBtn.textContent='Folder';
+  const csvName=document.createElement('input');csvName.id='csvname';csvName.value='trenchV2.csv';csvName.title='CSV file name';
+  resultGroup.appendChild(screenBtn);
+  resultGroup.appendChild(mlBtn);
+  resultGroup.appendChild(folderBtn);
+  resultGroup.appendChild(csvName);
+
+  const grip=document.createElement('div');grip.id='sideGrip';document.body.appendChild(grip);
+  const toggle=document.createElement('button');toggle.id='sideToggle';toggle.textContent='>';document.body.appendChild(toggle);
+
+  let resizing=false,startX=0,startW=ui.sideW;
+  grip.onmousedown=e=>{resizing=true;startX=e.clientX;startW=ui.sideW;e.preventDefault()};
+  addEventListener('mousemove',e=>{
+    if(!resizing)return;
+    ui.sideW=clamp(startW+(startX-e.clientX),220,760);
+    document.documentElement.style.setProperty('--sidew',ui.sideW+'px');
+    resize();
+  });
+  addEventListener('mouseup',()=>resizing=false);
+  toggle.onclick=()=>{
+    ui.sideHidden=!ui.sideHidden;
+    document.body.classList.toggle('side-hidden',ui.sideHidden);
+    toggle.textContent=ui.sideHidden?'<':'>';
+    resize();
+  };
+
+  folderBtn.onclick=chooseFolder;
+  screenBtn.onclick=saveScreen;
+  mlBtn.onclick=machineLearn;
+}
+
+async function chooseFolder(){
+  if(!window.showDirectoryPicker){alert('This browser cannot select a folder. Files will be downloaded instead.');return}
+  ui.folder=await window.showDirectoryPicker({mode:'readwrite'});
+  $('hint').textContent='Output folder selected. Create/select Desktop/trench V2 if you want that location.';
+}
+
+async function saveBlob(blob,name){
+  if(ui.folder&&ui.folder.getFileHandle){
+    const fh=await ui.folder.getFileHandle(name,{create:true});
+    const w=await fh.createWritable();
+    await w.write(blob);await w.close();
+    $('hint').textContent='Saved: '+name;
+    return;
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+function csvText(){
+  const cols=['file','id','scale','oxide','mask_shape','pitch','Htr','H','WA','WC','WB','mesa_left','mesa_right','WSiO1','WSiO2','Hox','Hc','alpha_left','beta_left','alpha_right','beta_right','outer_alpha','outer_beta','bowing'];
+  const lines=[cols.join(',')];
+  for(const m of st.rows)lines.push([m.file,m.id,m.scale,m.oxide,m.maskShape,m.pitch,m.htr??m.trenchHeight??m.height,m.h,m.wa,m.wc,m.wb,m.mesaLeft,m.mesaRight,m.wsio1,m.wsio2,m.hox,m.hc,m.alphaL,m.betaL,m.alphaR,m.betaR,m.outerAlpha,m.outerBeta,m.bow].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','));
+  return lines.join('\n');
+}
+
+$('csv').onclick=async()=>{
+  if(!st.rows.length){alert('No rows.');return}
+  let name=($('csvname')?.value||'trenchV2.csv').trim();
+  if(!/\.csv$/i.test(name))name+='.csv';
+  await saveBlob(new Blob([csvText()],{type:'text/csv;charset=utf-8'}),name);
+};
+
+async function saveScreen(){
+  const sr=stage.getBoundingClientRect(),pr=profCanvas.getBoundingClientRect();
+  const out=document.createElement('canvas');
+  out.width=Math.round(Math.max(sr.width,pr.width)*devicePixelRatio);
+  out.height=Math.round((sr.height+pr.height)*devicePixelRatio);
+  const o=out.getContext('2d');
+  o.scale(devicePixelRatio,devicePixelRatio);
+  o.fillStyle='#101820';o.fillRect(0,0,out.width,out.height);
+  o.drawImage(canvas,0,0,sr.width,sr.height);
+  const yw=$('ywin');
+  if(yw.style.display!=='none'){
+    const yr=yw.getBoundingClientRect(),cr=yCanvas.getBoundingClientRect();
+    o.fillStyle='rgba(255,255,255,.92)';
+    o.fillRect(yr.left-sr.left,yr.top-sr.top,yr.width,yr.height);
+    o.fillStyle='#7b4ab8';o.fillRect(yr.left-sr.left,yr.top-sr.top,yr.width,22);
+    o.fillStyle='#fff';o.font='12px Segoe UI';o.fillText('Y Profile',yr.left-sr.left+6,yr.top-sr.top+15);
+    o.drawImage(yCanvas,cr.left-sr.left,cr.top-sr.top,cr.width,cr.height);
+  }
+  o.fillStyle='#e8edf2';o.fillRect(0,sr.height,pr.width,pr.height);
+  o.drawImage(profCanvas,0,sr.height,pr.width,pr.height);
+  out.toBlob(async blob=>{
+    await saveBlob(blob,`${fileBaseName(st.name)}_screenshot.jpg`);
+  },'image/jpeg',0.92);
+}
+
+function machineLearn(){
+  if(!st.nodes||!st.roi||!st.measure){alert('Set ROI/template first.');return}
+  const rows=[
+    {name:'WA',y:st.measure.wa,ids:[2,8,9]},
+    {name:'WC',y:st.measure.wc,ids:[3,7,10]},
+    {name:'WB',y:st.measure.wb,ids:[4,5,6]}
+  ];
+  const learned={version:1,file:st.name||'',roi:{w:st.roi.w,h:st.roi.h},rows:[],yProfileX:st.yProfileX?((st.yProfileX-st.roi.x)/st.roi.w):null};
+  for(const r of rows){
+    const p=profileAt(r.y);if(!p)continue;
+    const marks=r.ids.map(id=>{
+      const x=node(id).x,idx=clamp(Math.round(x-p.x0),1,p.v.length-2);
+      const slope=p.v[idx+1]-p.v[idx-1];
+      let type='mid';
+      if(Math.abs(slope)<2){
+        type=p.v[idx]>(p.v[idx-1]+p.v[idx+1])/2?'peak':'valley';
+      }
+      return{id,xFrac:(x-st.roi.x)/st.roi.w,type,gray:p.v[idx],slope};
+    });
+    learned.rows.push({name:r.name,yFrac:(r.y-st.roi.y)/st.roi.h,marks});
+  }
+  localStorage.setItem('trenchV2MachineLearning',JSON.stringify(learned));
+  st.mlModel=learned;
+  $('hint').textContent='MachineLearning saved current red/green lines and profile peak/valley/midpoint positions.';
+}
+
+const oldScanForML=scan;
+scan=function(){
+  if(!st.roi){alert('Draw ROI first.');return}
+  if(!st.nodes)setupTemplate();
+  const model=st.mlModel||JSON.parse(localStorage.getItem('trenchV2MachineLearning')||'null');
+  if(model&&model.rows){
+    for(const r of model.rows){
+      const y=st.roi.y+r.yFrac*st.roi.h;
+      if(r.name==='WA')st.measure.wa=y;
+      if(r.name==='WC')st.measure.wc=y;
+      if(r.name==='WB')st.measure.wb=y;
+      for(const mark of r.marks||[]){
+        const p=node(mark.id);if(p)p.x=st.roi.x+mark.xFrac*st.roi.w;
+      }
+    }
+    syncY();
+  }
+  oldScanForML();
+};
+$('scan').onclick=scan;
+
+installV2Ui();
+
+function installV2UiFinal(){
+  $('scan').textContent='Auto fit';
+  const style=document.createElement('style');
+  style.textContent=`
+    header{flex-wrap:wrap}
+    header .pushRight{margin-left:auto!important}
+    #folder{display:none!important}
+    #calpx{width:64px!important}
+    #scaleInfo{font-size:12px;color:#dbe7f3;white-space:nowrap}
+    #ml{min-width:82px!important;white-space:normal!important;line-height:12px!important}
+  `;
+  document.head.appendChild(style);
+
+  const calGroup=$('cal').parentElement;
+  if(!$('calpx')){
+    const calpx=document.createElement('input');
+    calpx.id='calpx';calpx.type='number';calpx.step='0.1';calpx.placeholder='px';
+    const scaleInfo=document.createElement('span');
+    scaleInfo.id='scaleInfo';scaleInfo.textContent='10um = --px';
+    calGroup.appendChild(document.createTextNode('='));
+    calGroup.appendChild(calpx);
+    calGroup.appendChild(document.createTextNode('px'));
+    calGroup.appendChild(scaleInfo);
+    calpx.oninput=()=>{
+      const um=parseFloat($('calum').value),px=parseFloat(calpx.value);
+      st.umPerPx=px>0&&um>0?um/px:null;
+      updateScaleInfo();updateMetrics();
+    };
+  }
+
+  const right=document.createElement('div');
+  right.className='grp pushRight';
+  const rot=$('rot');
+  if(rot){
+    const rotPrev=rot.previousElementSibling,rotNext=rot.nextElementSibling;
+    if(rotPrev)right.appendChild(rotPrev);
+    right.appendChild(rot);
+    if(rotNext)right.appendChild(rotNext);
+  }
+  const ml=$('ml');
+  if(ml)right.appendChild(ml);
+  document.querySelector('header').appendChild(right);
+
+  const folder=$('folder');
+  if(folder)folder.remove();
+  updateScaleInfo();
+}
+
+function updateScaleInfo(){
+  const info=$('scaleInfo');if(!info)return;
+  const um=parseFloat($('calum').value);
+  let px=null;
+  if(st.cal)px=Math.hypot(st.cal.x2-st.cal.x1,st.cal.y2-st.cal.y1);
+  else if(st.umPerPx&&um>0)px=um/st.umPerPx;
+  if(px&&Number.isFinite(px)){
+    info.textContent=`${fmt(um,3)}um = ${fmt(px,1)}px`;
+    const calpx=$('calpx');
+    if(calpx&&document.activeElement!==calpx)calpx.value=fmt(px,1);
+  }else info.textContent=`${fmt(um,3)}um = --px`;
+}
+
+function updateCal(){
+  if(!st.cal)return;
+  const px=Math.hypot(st.cal.x2-st.cal.x1,st.cal.y2-st.cal.y1),um=parseFloat($('calum').value);
+  st.umPerPx=px>0&&um>0?um/px:null;
+  updateScaleInfo();updateMetrics();
+}
+$('calum').oninput=()=>{const px=parseFloat($('calpx')?.value);const um=parseFloat($('calum').value);if(px>0&&um>0)st.umPerPx=um/px;updateScaleInfo();updateMetrics()};
+
+function line(x1,y1,x2,y2,lab){
+  const a=i2s(x1,y1),b=i2s(x2,y2);
+  ctx.strokeStyle='#111';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  ctx.save();
+  ctx.font='12px Segoe UI';ctx.textAlign='center';ctx.textBaseline='middle';
+  let t=0.5,dy=-14;
+  if(lab==='Height'){t=1/3;dy=0}
+  const mx=a.x+(b.x-a.x)*t,my=a.y+(b.y-a.y)*t+dy;
+  const tw=ctx.measureText(lab).width+10,th=16;
+  ctx.fillStyle='rgba(255,255,255,.88)';
+  ctx.fillRect(mx-tw/2,my-th/2,tw,th);
+  ctx.fillStyle='#111';ctx.fillText(lab,mx,my);
+  ctx.restore();
+}
+
+function machineLearn(){
+  if(!st.nodes||!st.roi||!st.measure){alert('Set ROI/template first.');return}
+  const rows=[
+    {name:'WA',y:st.measure.wa,ids:[2,8,9]},
+    {name:'WC',y:st.measure.wc,ids:[3,7,10]},
+    {name:'WB',y:st.measure.wb,ids:[4,5,6]}
+  ];
+  const learned={version:2,file:st.name||'',roi:{w:st.roi.w,h:st.roi.h},rows:[],topNodes:[1,2,8,9].map(id=>({id,xFrac:(node(id).x-st.roi.x)/st.roi.w,yFrac:(node(id).y-st.roi.y)/st.roi.h})),yProfileX:st.yProfileX?((st.yProfileX-st.roi.x)/st.roi.w):null};
+  for(const r of rows){
+    const p=profileAt(r.y);if(!p)continue;
+    const marks=r.ids.map(id=>{
+      const x=node(id).x,idx=clamp(Math.round(x-p.x0),1,p.v.length-2);
+      const slope=p.v[idx+1]-p.v[idx-1];
+      let type='mid';
+      if(Math.abs(slope)<2)type=p.v[idx]>(p.v[idx-1]+p.v[idx+1])/2?'peak':'valley';
+      return{id,xFrac:(x-st.roi.x)/st.roi.w,type,gray:p.v[idx],slope};
+    });
+    learned.rows.push({name:r.name,yFrac:(r.y-st.roi.y)/st.roi.h,marks});
+  }
+  localStorage.setItem('trenchV2MachineLearning',JSON.stringify(learned));
+  st.mlModel=learned;
+  $('hint').textContent='MachineLearning saved. Auto fit will use the learned WC/profile red-green positions.';
+}
+if($('ml'))$('ml').onclick=machineLearn;
+
+scan=function(){
+  if(!st.roi){alert('Draw ROI first.');return}
+  if(!st.nodes)setupTemplate();
+  oldScanForML();
+  $('hint').textContent='Auto fit: full ROI scan completed. MachineLearning is saved separately and will not override this scan.';
+};
+$('scan').onclick=scan;
+
+function installManualMeasure(){
+  st.manualDistances=st.manualDistances||[];
+  const style=document.createElement('style');
+  style.textContent=`
+    #manualX,#manualY{background:#f7d7ee;border-color:#e477c1;color:#5f1348}
+  `;
+  document.head.appendChild(style);
+  const grp=$('scan').parentElement;
+  if(!$('manualX')){
+    const bx=document.createElement('button');bx.id='manualX';bx.textContent='X measure';
+    const by=document.createElement('button');by.id='manualY';by.textContent='Y measure';
+    grp.appendChild(bx);grp.appendChild(by);
+    bx.onclick=()=>{st.tool='manualX';$('hint').textContent='Manual X measure: drag a horizontal pink double-arrow.'};
+    by.onclick=()=>{st.tool='manualY';$('hint').textContent='Manual Y measure: drag a vertical pink double-arrow.'};
+  }
+}
+
+function manualName(axis){
+  const n=(st.manualDistances||[]).filter(d=>d.axis===axis).length+1;
+  return axis+n;
+}
+
+function manualLen(d){
+  const px=d.axis==='X'?Math.abs(d.x2-d.x1):Math.abs(d.y2-d.y1);
+  return px*(st.umPerPx||1);
+}
+
+function manualSummary(){
+  const out={X1:NaN,X2:NaN,X3:NaN,Y1:NaN,Y2:NaN,Y3:NaN};
+  for(const d of st.manualDistances||[]){
+    if(out[d.name]!==undefined)out[d.name]=manualLen(d);
+  }
+  return out;
+}
+
+function drawArrowHead(x,y,ang,size){
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(x-Math.cos(ang-.55)*size,y-Math.sin(ang-.55)*size);
+  ctx.lineTo(x-Math.cos(ang+.55)*size,y-Math.sin(ang+.55)*size);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawManualDistances(){
+  const arr=[...(st.manualDistances||[])];
+  if(st.drag?.type==='manual')arr.push(st.drag.item);
+  if(!arr.length)return;
+  ctx.save();
+  ctx.strokeStyle='#ff4fc3';
+  ctx.fillStyle='#ff4fc3';
+  ctx.lineWidth=2.4;
+  ctx.font='13px Segoe UI';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  for(const d of arr){
+    const a=i2s(d.x1,d.y1),b=i2s(d.x2,d.y2);
+    const ang=Math.atan2(b.y-a.y,b.x-a.x);
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    drawArrowHead(a.x,a.y,ang+Math.PI,8);
+    drawArrowHead(b.x,b.y,ang,8);
+    const val=manualLen(d),unit=st.umPerPx?'um':'px';
+    const label=`${d.name} ${fmt(val,3)} ${unit}`;
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2-12;
+    const tw=ctx.measureText(label).width+10;
+    ctx.fillStyle='rgba(255,255,255,.86)';
+    ctx.fillRect(mx-tw/2,my-9,tw,18);
+    ctx.fillStyle='#ff4fc3';
+    ctx.fillText(label,mx,my);
+  }
+  ctx.restore();
+}
+
+const drawBeforeManual=draw;
+draw=function(){
+  drawBeforeManual();
+  drawManualDistances();
+};
+
+const oldMouseDownManual=canvas.onmousedown;
+const oldMouseMoveManual=canvas.onmousemove;
+const oldMouseUpManual=canvas.onmouseup;
+canvas.onmousedown=e=>{
+  if(st.img&&(st.tool==='manualX'||st.tool==='manualY')&&e.button!==2){
+    const m=mouse(e),axis=st.tool==='manualX'?'X':'Y';
+    const item={axis,name:manualName(axis),x1:m.x,y1:m.y,x2:m.x,y2:m.y};
+    st.drag={type:'manual',item};
+    draw();
+    return;
+  }
+  oldMouseDownManual(e);
+};
+canvas.onmousemove=e=>{
+  if(st.drag?.type==='manual'){
+    const m=mouse(e),d=st.drag.item;
+    if(d.axis==='X'){d.x2=m.x;d.y2=d.y1}
+    else{d.x2=d.x1;d.y2=m.y}
+    draw();
+    return;
+  }
+  oldMouseMoveManual(e);
+};
+canvas.onmouseup=e=>{
+  if(st.drag?.type==='manual'){
+    const d=st.drag.item;
+    if(Math.hypot(d.x2-d.x1,d.y2-d.y1)>2){
+      st.manualDistances=st.manualDistances||[];
+      st.manualDistances.push(d);
+      st.history.push({manual:true});
+      $('hint').textContent=`${d.name} added. Press Undo to remove the last manual measure.`;
+    }
+    st.drag=null;
+    draw();drawProfile();
+    return;
+  }
+  oldMouseUpManual(e);
+};
+
+const oldUndoManual=$('undo').onclick;
+$('undo').onclick=()=>{
+  const last=st.history[st.history.length-1];
+  if(last?.manual){
+    st.history.pop();
+    st.manualDistances?.pop();
+    draw();drawProfile();
+    return;
+  }
+  oldUndoManual();
+};
+
+const oldClearManual=$('clear').onclick;
+$('clear').onclick=()=>{
+  st.manualDistances=[];
+  oldClearManual();
+};
+
+const oldSaveManual=$('save').onclick;
+$('save').onclick=()=>{
+  const m=metrics();if(!m){alert('No measurement.');return}
+  st.rows.push({id:st.rows.length+1,file:st.name,...m,...manualSummary(),scale:st.umPerPx||1});
+  renderRows();
+};
+
+function renderRows(){
+  const table=$('tbl');
+  const head=table.querySelector('thead tr');
+  head.innerHTML='<th>ID</th><th>Pitch</th><th>Htr</th><th>H</th><th>WA</th><th>WC</th><th>WB</th><th>Hox</th><th>Hc</th><th>aL</th><th>bL</th><th>aR</th><th>bR</th><th>X1</th><th>X2</th><th>X3</th><th>Y1</th><th>Y2</th><th>Y3</th>';
+  const tb=table.querySelector('tbody');tb.innerHTML='';
+  for(const m of st.rows){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${m.id}</td><td>${fmt(m.pitch)}</td><td>${fmt(m.htr??m.trenchHeight??m.height)}</td><td>${fmt(m.h)}</td><td>${fmt(m.wa)}</td><td>${fmt(m.wc)}</td><td>${fmt(m.wb)}</td><td>${fmt(m.hox)}</td><td>${fmt(m.hc)}</td><td>${fmt(m.alphaL,2)}</td><td>${fmt(m.betaL,2)}</td><td>${fmt(m.alphaR,2)}</td><td>${fmt(m.betaR,2)}</td><td>${fmt(m.X1)}</td><td>${fmt(m.X2)}</td><td>${fmt(m.X3)}</td><td>${fmt(m.Y1)}</td><td>${fmt(m.Y2)}</td><td>${fmt(m.Y3)}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+function csvText(){
+  const cols=['file','id','scale','oxide','mask_shape','pitch','Htr','H','WA','WC','WB','mesa_left','mesa_right','WSiO1','WSiO2','Hox','Hc','alpha_left','beta_left','alpha_right','beta_right','outer_alpha','outer_beta','bowing','X1','X2','X3','Y1','Y2','Y3'];
+  const lines=[cols.join(',')];
+  for(const m of st.rows)lines.push([m.file,m.id,m.scale,m.oxide,m.maskShape,m.pitch,m.htr??m.trenchHeight??m.height,m.h,m.wa,m.wc,m.wb,m.mesaLeft,m.mesaRight,m.wsio1,m.wsio2,m.hox,m.hc,m.alphaL,m.betaL,m.alphaR,m.betaR,m.outerAlpha,m.outerBeta,m.bow,m.X1,m.X2,m.X3,m.Y1,m.Y2,m.Y3].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','));
+  return lines.join('\n');
+}
+
+$('file').addEventListener('change',()=>{st.manualDistances=[]});
+
+function strongestVerticalEdgeY(){
+  if(!st.roi)return null;
+  const px=st.yProfileX??(st.roi.x+st.roi.w*.08);
+  const p=verticalProfileAtX(px);if(!p)return null;
+  st.yProfileX=p.x;st.yProfile=p;
+  const n=p.v.length,lo=Math.round(n*.04),hi=Math.round(n*.42);
+  let best=lo,score=-Infinity;
+  for(let i=Math.max(2,lo);i<Math.min(n-2,hi);i++){
+    const g=Math.abs(p.v[i+1]-p.v[i-1]);
+    const preferTop=1-Math.abs(i-n*.14)/Math.max(1,n*.28);
+    const s=g*(1+.18*Math.max(0,preferTop));
+    if(s>score){score=s;best=i}
+  }
+  return clamp(p.y0+best,st.roi.y+2,st.roi.y+st.roi.h-2);
+}
+
+function slopeMidpointCandidates(prof,falling){
+  const v=prof.v,n=v.length,out=[];
+  for(let i=3;i<n-4;i++){
+    const g=v[i+1]-v[i-1];
+    const score=falling?-g:g;
+    if(score<=0)continue;
+    let peak=true;
+    for(let k=-3;k<=3;k++){
+      if(k&&i+k>2&&i+k<n-3){
+        const gg=v[i+k+1]-v[i+k-1],ss=falling?-gg:gg;
+        if(ss>score){peak=false;break}
+      }
+    }
+    if(!peak)continue;
+    const x=snapEdgeNear(prof,prof.x0+i,Math.max(8,st.roi.w*.04),!falling);
+    if(x>=st.roi.x&&x<=st.roi.x+st.roi.w&&out.every(e=>Math.abs(e.x-x)>st.roi.w*.025))out.push({x,idx:i,score});
+  }
+  return out.sort((a,b)=>a.x-b.x);
+}
+
+function wcTripletCandidates(){
+  const p=profileAt(st.measure.wc);if(!p)return [];
+  const falls=slopeMidpointCandidates(p,true),rises=slopeMidpointCandidates(p,false);
+  const minGap=Math.max(4,st.roi.w*.025),maxGap=st.roi.w*.42;
+  const triples=[];
+  for(const l of falls){
+    for(const r1 of rises.filter(r=>r.x>l.x+minGap&&r.x<l.x+maxGap)){
+      const width=r1.x-l.x;
+      for(const r2 of falls.filter(f=>f.x>r1.x+minGap&&f.x<r1.x+Math.max(maxGap,width*1.8))){
+        const period=r2.x-l.x;
+        if(period>st.roi.w*.08&&period<st.roi.w*.80){
+          const centerScore=st.nodes?Math.abs(l.x-node(3).x)+Math.abs(r1.x-node(7).x)+Math.abs(r2.x-node(10).x):0;
+          const shapeScore=Math.abs((r1.x-l.x)-(r2.x-r1.x)*.55);
+          triples.push({l:l.x,r1:r1.x,r2:r2.x,score:centerScore+shapeScore*.35});
+        }
+      }
+    }
+  }
+  triples.sort((a,b)=>a.score-b.score);
+  return triples;
+}
+
+function applyWcTriplet(t){
+  node(3).x=t.l;node(7).x=t.r1;node(10).x=t.r2;
+  const span=Math.max(8,st.roi.w*.08);
+  const snapRow=(y,ids)=>{
+    const p=profileAt(y);if(!p)return;
+    node(ids[0]).x=snapEdgeNear(p,node(ids[0]).x,span,false);
+    node(ids[1]).x=snapEdgeNear(p,node(ids[1]).x,span,true);
+    node(ids[2]).x=snapEdgeNear(p,node(ids[2]).x,span,false);
+  };
+  snapRow(st.measure.wa,[2,8,9]);
+  snapRow(st.measure.wb,[4,6,11]);
+  node(5).x=(node(4).x+node(6).x)/2;
+  node(12).x=node(1).x;
+}
+
+scan=function(){
+  if(!st.roi){alert('Draw ROI first.');return}
+  if(!st.nodes)setupTemplate();
+  st.measure.heightTop=st.roi.y+st.roi.h*.05;
+  st.measure.heightBottom=st.roi.y+st.roi.h*.95;
+  const wa=strongestVerticalEdgeY();
+  if(wa!=null){
+    st.measure.wa=wa;
+    const bottomGuess=st.roi.y+st.roi.h*.86;
+    st.measure.wb=clamp(Math.max(st.measure.wb||bottomGuess,bottomGuess),st.roi.y+st.roi.h*.50,st.roi.y+st.roi.h*.96);
+    st.measure.wc=st.measure.wa+(st.measure.wb-st.measure.wa)*.5;
+  }
+  syncY();
+  const candidates=wcTripletCandidates();
+  if(candidates.length){
+    st.autoFitStep=(st.autoFitStep||0)%Math.min(candidates.length,6);
+    applyWcTriplet(candidates[st.autoFitStep]);
+    st.autoFitStep++;
+  }else{
+    oldScanForML();
+    st.measure.heightTop=st.roi.y+st.roi.h*.05;
+    st.measure.heightBottom=st.roi.y+st.roi.h*.95;
+  }
+  syncY();updateMetrics();draw();drawProfile();
+  $('hint').textContent=candidates.length
+    ? 'Auto fit: H top/bottom set to ROI 5%/95%; WA snapped to Y-profile edge; WC L/R1/R2 snapped to adjacent slope midpoints. Press again to try next periodic match.'
+    : 'Auto fit: H top/bottom set to ROI 5%/95%; fallback scan used because WC L/R1/R2 triplet was not found.';
+};
+$('scan').onclick=scan;
+
+function installTwoYProfileWindows(){
+  const style=document.createElement('style');
+  style.textContent=`
+    .ypair{position:absolute;display:none;background:rgba(255,255,255,.94);border:1px solid #7b4ab8;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.25);overflow:hidden;z-index:4;pointer-events:none}
+    .ypairTitle{height:22px;padding:2px 6px;background:#7b4ab8;color:#fff;font-size:12px;line-height:18px}
+    .ypairCanvas{display:block;width:100%;height:calc(100% - 22px)}
+  `;
+  document.head.appendChild(style);
+  const y1=$('ywin');
+  y1.className='ypair';
+  $('ywinTitle').className='ypairTitle';
+  $('ywinTitle').textContent='Y profile 1';
+  yCanvas.className='ypairCanvas';
+  if(!$('ywin2')){
+    const d=document.createElement('div');
+    d.id='ywin2';d.className='ypair';
+    d.innerHTML='<div class="ypairTitle">Y profile 2</div><canvas id="yprofile2" class="ypairCanvas"></canvas>';
+    stage.appendChild(d);
+  }
+}
+
+function midpointX(a,b){
+  return node(a)&&node(b)?(node(a).x+node(b).x)/2:null;
+}
+
+function drawYWindow(win,can,xProfile,title,top,left,w,h){
+  if(!win||!can||!xProfile||!st.roi){if(win)win.style.display='none';return}
+  win.style.display='block';
+  win.style.left=`${left}px`;
+  win.style.top=`${top}px`;
+  win.style.width=`${w}px`;
+  win.style.height=`${h}px`;
+  win.querySelector('.ypairTitle').textContent=title;
+  const bodyH=Math.max(1,h-22);
+  can.width=Math.max(1,Math.round(w*devicePixelRatio));
+  can.height=Math.max(1,Math.round(bodyH*devicePixelRatio));
+  const c=can.getContext('2d');
+  c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  c.clearRect(0,0,w,bodyH);
+  c.fillStyle='rgba(255,255,255,.94)';c.fillRect(0,0,w,bodyH);
+  let lo=1e9,hi=-1e9;
+  for(const v of xProfile.v){lo=Math.min(lo,v);hi=Math.max(hi,v)}
+  c.strokeStyle='#7b4ab8';c.lineWidth=2;c.beginPath();
+  for(let i=0;i<xProfile.v.length;i++){
+    const xx=(xProfile.v[i]-lo)/Math.max(1,hi-lo)*w;
+    const yy=i/(xProfile.v.length-1)*bodyH;
+    i?c.lineTo(xx,yy):c.moveTo(xx,yy);
+  }
+  c.stroke();
+  if(st.measure){
+    for(const [yy,label] of [[st.measure.wa,'WA'],[st.measure.wc,'WC'],[st.measure.wb,'WB']]){
+      const sy=(yy-xProfile.y0)/(xProfile.v.length-1)*bodyH;
+      if(sy<0||sy>bodyH)continue;
+      c.strokeStyle='#111';c.lineWidth=1.4;c.beginPath();c.moveTo(0,sy);c.lineTo(w,sy);c.stroke();
+      c.fillStyle='#111';c.font='12px Segoe UI';c.fillText(label,4,sy-3);
+    }
+  }
+}
+
+function drawMainYProfile(){
+  if(!st.roi||!st.nodes){$('ywin').style.display='none';const w2=$('ywin2');if(w2)w2.style.display='none';return}
+  const x1=midpointX(1,2),x2=midpointX(2,8);
+  const p1=verticalProfileAtX(x1),p2=verticalProfileAtX(x2);
+  const top=i2s(0,st.roi.y).y,bottom=i2s(0,st.roi.y+st.roi.h).y,roiLeft=i2s(st.roi.x,0).x;
+  const h=bottom-top,w=Math.max(70,Math.min(135,st.roi.w*st.view.s*.15)),gap=12;
+  const left=Math.max(8,roiLeft-w*2-gap-76);
+  drawYWindow($('ywin'),yCanvas,p1,'Y profile 1',top,left,w,h);
+  drawYWindow($('ywin2'),$('yprofile2'),p2,'Y profile 2',top,left+w+gap,w,h);
+  st.yProfileX=x1;st.yProfile=p1;
+}
+
+function drawYProfileGuide(){
+  if(!st.roi||!st.nodes)return;
+  const xs=[['Y1',midpointX(1,2)],['Y2',midpointX(2,8)]];
+  ctx.save();ctx.strokeStyle='#7b4ab8';ctx.fillStyle='#7b4ab8';ctx.lineWidth=2;ctx.setLineDash([7,5]);ctx.font='12px Segoe UI';
+  for(const [lab,x] of xs){
+    const a=i2s(x,st.roi.y),b=i2s(x,st.roi.y+st.roi.h);
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    ctx.fillText(lab,a.x+5,a.y+15);
+  }
+  ctx.restore();
+}
+
+function drawMeasureLines(){
+  if(!st.roi||!st.measure)return;
+  const m=st.measure,xs=i2s(st.roi.x,0).x,xe=i2s(st.roi.x+st.roi.w,0).x;
+  ctx.save();ctx.strokeStyle='#111';ctx.fillStyle='#111';ctx.lineWidth=1.4;ctx.font='12px Segoe UI';ctx.setLineDash([6,5]);
+  let rows=[['wa','WA'],['wc','WC'],['wb','WB']];
+  if(hasOxide())rows=rows.concat([['oxTop','Ox top'],['oxBottom','Ox bottom'],['shoulder','Hc']]);
+  for(const [k,lab] of rows){const y=i2s(0,m[k]).y;ctx.beginPath();ctx.moveTo(xs,y);ctx.lineTo(xe,y);ctx.stroke();ctx.fillText(lab,xs+8,y-4)}
+  ctx.setLineDash([]);
+  if(st.nodes){
+    line(node(2).x,m.wa,node(8).x,m.wa,'WA');
+    line(node(3).x,m.wc,node(7).x,m.wc,'WC');
+    line(node(4).x,m.wb,node(6).x,m.wb,'WB');
+    for(const g of mesaOxideGeoms()){
+      orangeLine(g.topL,g.topY,g.topR,g.topY,'WSiO1');
+      orangeLine(g.bottomL,g.botY,g.bottomR,g.botY,'WSiO2');
+      orangeLine(g.bottomR,g.botY,g.shoulderR,g.shoulderY,'Hc');
+    }
+  }
+  ctx.restore();
+}
+
+const previousHitTestNoH=hitTest;
+hitTest=function(m){
+  const h=previousHitTestNoH(m);
+  if(h?.type==='measureY'&&(h.key==='heightTop'||h.key==='heightBottom'||h.key==='pitch'))return null;
+  return h;
+};
+
+function drawOneXProfile(p,yTop,h,label,marks){
+  if(!p)return;
+  const r=profCanvas.getBoundingClientRect();
+  const left=i2s(st.roi.x,0).x;
+  const right=i2s(st.roi.x+st.roi.w,0).x;
+  const x0=clamp(left,8,r.width-20),x1=clamp(right,20,r.width-8);
+  let lo=1e9,hi=-1e9;
+  for(const v of p.v){lo=Math.min(lo,v);hi=Math.max(hi,v)}
+  pctx.strokeStyle='#d7dde4';pctx.strokeRect(x0,yTop,x1-x0,h);
+  pctx.fillStyle='#111';pctx.font='12px Segoe UI';pctx.fillText(label,x0+6,yTop+14);
+  pctx.strokeStyle='#2c6da3';pctx.lineWidth=2;pctx.beginPath();
+  for(let i=0;i<p.v.length;i++){
+    const x=x0+i/(p.v.length-1)*(x1-x0);
+    const y=yTop+h-(p.v[i]-lo)/Math.max(1,hi-lo)*h;
+    i?pctx.lineTo(x,y):pctx.moveTo(x,y);
+  }
+  pctx.stroke();
+  for(const [x,col,lab] of marks){
+    const sx=x0+(x-p.x0)/(p.v.length-1)*(x1-x0);
+    pctx.strokeStyle=col;pctx.beginPath();pctx.moveTo(sx,yTop);pctx.lineTo(sx,yTop+h);pctx.stroke();
+    pctx.fillStyle=col;pctx.fillText(lab,sx+4,yTop+14);
+  }
+}
+
+function drawProfile(){
+  const r=profCanvas.getBoundingClientRect();
+  pctx.clearRect(0,0,r.width,r.height);
+  pctx.fillStyle='white';pctx.fillRect(0,0,r.width,r.height);
+  pctx.strokeStyle='#d7dde4';pctx.strokeRect(.5,.5,r.width-1,r.height-1);
+  if(!st.measure||!st.roi)return;
+  const gap=12,h=(r.height-36-gap)/2,top1=18,top2=18+h+gap;
+  const wc=profileAt(st.measure.wc),wb=profileAt(st.measure.wb);
+  drawOneXProfile(wc,top1,h,'WC profile',st.nodes?[[node(3).x,'#d11f3a','L'],[node(7).x,'#009b72','R1'],[node(10).x,'#009b72','R2']]:[]);
+  drawOneXProfile(wb,top2,h,'WB profile',st.nodes?[[node(4).x,'#d11f3a','L'],[node(6).x,'#009b72','R1'],[node(11).x,'#009b72','R2']]:[]);
+  $('pinfo').innerHTML='<span class="badge">Profile</span>Top: WC profile<br>Bottom: WB profile<br>X range aligned to ROI.';
+}
+
+function metrics(){
+  if(!st.nodes||!st.measure)return null;
+  setOxideDefaults();
+  const u=st.umPerPx||1;
+  const ang=(a,b)=>Math.atan((b.x-a.x)/(b.y-a.y))*180/Math.PI;
+  const segAng=(x1,y1,x2,y2)=>Math.atan((x2-x1)/(y2-y1))*180/Math.PI;
+  const pitchPx=(Math.abs(node(9).x-node(2).x)+Math.abs(node(10).x-node(3).x))/2;
+  const g=mesaOxideGeoms()[0];
+  const trenchHeightPx=Math.abs(node(12).y-node(1).y);
+  return{
+    pitch:pitchPx*u,height:trenchHeightPx*u,trenchHeight:trenchHeightPx*u,htr:trenchHeightPx*u,
+    wa:Math.abs(node(8).x-node(2).x)*u,wc:Math.abs(node(7).x-node(3).x)*u,wb:Math.abs(node(6).x-node(4).x)*u,
+    mesaLeft:Math.abs(node(2).x-node(1).x)*u,mesaRight:Math.abs(node(9).x-node(8).x)*u,
+    alphaL:ang(node(2),node(3)),betaL:ang(node(3),node(4)),alphaR:ang(node(8),node(7)),betaR:ang(node(7),node(6)),
+    outerAlpha:ang(node(9),node(10)),outerBeta:ang(node(10),node(11)),
+    bow:(Math.abs(node(7).x-node(3).x)-((Math.abs(node(8).x-node(2).x)+Math.abs(node(6).x-node(4).x))/2))*u,
+    oxide:hasOxide()?'yes':'no',maskShape:hasOxide()?oxideShape():'',
+    wsio1:hasOxide()&&g?g.topW*u:NaN,wsio2:hasOxide()&&g?g.botW*u:NaN,
+    hox:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.oxTop)*u:NaN,
+    hc:hasOxide()?Math.abs(st.measure.oxBottom-st.measure.shoulder)*u:NaN,
+    oxLeftTopAngle:hasOxide()&&g?segAng(g.topL,g.topY,g.shoulderL,g.shoulderY):NaN,
+    oxLeftShoulderAngle:hasOxide()&&g?segAng(g.shoulderL,g.shoulderY,g.bottomL,g.botY):NaN
+  };
+}
+
+function updateMetrics(){
+  const m=metrics();if(!m){$('metrics').textContent='No measurement.';return}
+  const unit=st.umPerPx?'um':'px';
+  let html=`<span class="badge">${st.umPerPx?'scale '+fmt(st.umPerPx,5)+' um/px':'not calibrated, px'}</span><br>Pitch: ${fmt(m.pitch)} ${unit}<br>Htr trench depth: ${fmt(m.htr)} ${unit}<br>WA / WC / WB: ${fmt(m.wa)} / ${fmt(m.wc)} / ${fmt(m.wb)} ${unit}<br>Left/Right mesa: ${fmt(m.mesaLeft)} / ${fmt(m.mesaRight)} ${unit}<br>aL / bL: ${fmt(m.alphaL,2)} / ${fmt(m.betaL,2)} deg<br>aR / bR: ${fmt(m.alphaR,2)} / ${fmt(m.betaR,2)} deg<br>Outer 9 / 10: ${fmt(m.outerAlpha,2)} / ${fmt(m.outerBeta,2)} deg<br>Bowing: ${fmt(m.bow)} ${unit}`;
+  if(hasOxide())html+=`<br><br><span class="badge">SiO2</span><br>WSiO1 / WSiO2: ${fmt(m.wsio1)} / ${fmt(m.wsio2)} ${unit}<br>Hox / Hc: ${fmt(m.hox)} / ${fmt(m.hc)} ${unit}<br>Left top / shoulder angle: ${fmt(m.oxLeftTopAngle,2)} / ${fmt(m.oxLeftShoulderAngle,2)} deg`;
+  $('metrics').innerHTML=html;
+}
+
+function renderRows(){
+  const table=$('tbl');
+  const head=table.querySelector('thead tr');
+  head.innerHTML='<th>ID</th><th>Pitch</th><th>Htr</th><th>WA</th><th>WC</th><th>WB</th><th>Hox</th><th>Hc</th><th>aL</th><th>bL</th><th>aR</th><th>bR</th><th>X1</th><th>X2</th><th>X3</th><th>Y1</th><th>Y2</th><th>Y3</th>';
+  const tb=table.querySelector('tbody');tb.innerHTML='';
+  for(const m of st.rows){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${m.id}</td><td>${fmt(m.pitch)}</td><td>${fmt(m.htr??m.trenchHeight??m.height)}</td><td>${fmt(m.wa)}</td><td>${fmt(m.wc)}</td><td>${fmt(m.wb)}</td><td>${fmt(m.hox)}</td><td>${fmt(m.hc)}</td><td>${fmt(m.alphaL,2)}</td><td>${fmt(m.betaL,2)}</td><td>${fmt(m.alphaR,2)}</td><td>${fmt(m.betaR,2)}</td><td>${fmt(m.X1)}</td><td>${fmt(m.X2)}</td><td>${fmt(m.X3)}</td><td>${fmt(m.Y1)}</td><td>${fmt(m.Y2)}</td><td>${fmt(m.Y3)}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+function csvText(){
+  const cols=['file','id','scale','oxide','mask_shape','pitch','Htr','WA','WC','WB','mesa_left','mesa_right','WSiO1','WSiO2','Hox','Hc','alpha_left','beta_left','alpha_right','beta_right','outer_alpha','outer_beta','bowing','X1','X2','X3','Y1','Y2','Y3'];
+  const lines=[cols.join(',')];
+  for(const m of st.rows)lines.push([m.file,m.id,m.scale,m.oxide,m.maskShape,m.pitch,m.htr??m.trenchHeight??m.height,m.wa,m.wc,m.wb,m.mesaLeft,m.mesaRight,m.wsio1,m.wsio2,m.hox,m.hc,m.alphaL,m.betaL,m.alphaR,m.betaR,m.outerAlpha,m.outerBeta,m.bow,m.X1,m.X2,m.X3,m.Y1,m.Y2,m.Y3].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','));
+  return lines.join('\n');
+}
+
+const oldSaveNoH=$('save').onclick;
+$('save').onclick=()=>{
+  const m=metrics();if(!m){alert('No measurement.');return}
+  st.rows.push({id:st.rows.length+1,file:st.name,...m,...manualSummary(),scale:st.umPerPx||1});
+  renderRows();
+};
+
+const oldScanNoH=scan;
+scan=function(){
+  oldScanNoH();
+  if(st.measure){
+    delete st.measure.heightTop;
+    delete st.measure.heightBottom;
+    draw();drawProfile();updateMetrics();
+  }
+};
+$('scan').onclick=scan;
+
+async function saveScreen(){
+  const sr=stage.getBoundingClientRect(),pr=profCanvas.getBoundingClientRect();
+  const out=document.createElement('canvas');
+  out.width=Math.round(Math.max(sr.width,pr.width)*devicePixelRatio);
+  out.height=Math.round((sr.height+pr.height)*devicePixelRatio);
+  const o=out.getContext('2d');
+  o.scale(devicePixelRatio,0+devicePixelRatio);
+  o.fillStyle='#101820';o.fillRect(0,0,out.width,out.height);
+  o.drawImage(canvas,0,0,sr.width,sr.height);
+  for(const yw of document.querySelectorAll('.ypair')){
+    if(yw.style.display==='none')continue;
+    const yr=yw.getBoundingClientRect();
+    const yc=yw.querySelector('canvas');
+    const cr=yc.getBoundingClientRect();
+    o.fillStyle='rgba(255,255,255,.94)';
+    o.fillRect(yr.left-sr.left,yr.top-sr.top,yr.width,yr.height);
+    o.fillStyle='#7b4ab8';
+    o.fillRect(yr.left-sr.left,yr.top-sr.top,yr.width,22);
+    o.fillStyle='#fff';o.font='12px Segoe UI';
+    o.fillText(yw.querySelector('.ypairTitle')?.textContent||'Y profile',yr.left-sr.left+6,yr.top-sr.top+15);
+    o.drawImage(yc,cr.left-sr.left,cr.top-sr.top,cr.width,cr.height);
+  }
+  o.fillStyle='#e8edf2';o.fillRect(0,sr.height,pr.width,pr.height);
+  o.drawImage(profCanvas,0,sr.height,pr.width,pr.height);
+  out.toBlob(async blob=>{await saveBlob(blob,`${fileBaseName(st.name)}_screenshot.jpg`);},'image/jpeg',0.92);
+}
+if($('screen'))$('screen').onclick=saveScreen;
+
+function installProfileLayoutFinal(){
+  const style=document.createElement('style');
+  style.textContent=`
+    .profile{grid-template-columns:220px 1fr!important;gap:10px!important}
+    #pinfo{order:1!important;min-width:0}
+    #profile{order:2!important;min-width:0}
+    .ypair{border-color:#7b4ab8!important}
+  `;
+  document.head.appendChild(style);
+}
+
+function drawYWindow(win,can,xProfile,title,top,left,w,h){
+  if(!win||!can||!xProfile||!st.roi){if(win)win.style.display='none';return}
+  win.style.display='block';
+  win.style.left=`${left}px`;
+  win.style.top=`${top}px`;
+  win.style.width=`${w}px`;
+  win.style.height=`${h}px`;
+  win.querySelector('.ypairTitle').textContent=title;
+  const bodyH=Math.max(1,h-22);
+  can.width=Math.max(1,Math.round(w*devicePixelRatio));
+  can.height=Math.max(1,Math.round(bodyH*devicePixelRatio));
+  const c=can.getContext('2d');
+  c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  c.clearRect(0,0,w,bodyH);
+  c.fillStyle='rgba(255,255,255,.94)';c.fillRect(0,0,w,bodyH);
+  let lo=1e9,hi=-1e9;
+  for(const v of xProfile.v){lo=Math.min(lo,v);hi=Math.max(hi,v)}
+  c.strokeStyle='#7b4ab8';c.lineWidth=2;c.beginPath();
+  for(let i=0;i<xProfile.v.length;i++){
+    const xx=(p=>p)(w*.08+(xProfile.v[i]-lo)/Math.max(1,hi-lo)*w*.82);
+    const yy=i/(xProfile.v.length-1)*bodyH;
+    i?c.lineTo(xx,yy):c.moveTo(xx,yy);
+  }
+  c.stroke();
+  c.strokeStyle='#7b4ab8';c.fillStyle='#7b4ab8';c.lineWidth=1.6;
+  const ax=w-12,ay0=14,ay1=bodyH-14;
+  c.beginPath();c.moveTo(ax,ay0);c.lineTo(ax,ay1);c.stroke();
+  c.beginPath();c.moveTo(ax,ay1);c.lineTo(ax-5,ay1-8);c.lineTo(ax+5,ay1-8);c.closePath();c.fill();
+  c.font='11px Segoe UI';c.fillText('Y',ax-14,ay0+8);
+  if(st.measure){
+    for(const [yy,label] of [[st.measure.wa,'WA'],[st.measure.wc,'WC'],[st.measure.wb,'WB']]){
+      const sy=(yy-xProfile.y0)/(xProfile.v.length-1)*bodyH;
+      if(sy<0||sy>bodyH)continue;
+      c.strokeStyle='#111';c.lineWidth=1.4;c.beginPath();c.moveTo(0,sy);c.lineTo(w,sy);c.stroke();
+      c.fillStyle='#111';c.font='12px Segoe UI';c.fillText(label,4,sy-3);
+    }
+  }
+}
+
+function drawMainYProfile(){
+  const panel=$('yProfilePanel');
+  const pinfoW=Math.round($('pinfo')?.getBoundingClientRect().width||220);
+  if(!st.roi||!st.nodes){
+    if(panel){
+      panel.style.display='block';
+      panel.style.left='12px';
+      panel.style.top='12px';
+      panel.style.width=`${Math.max(180,pinfoW)}px`;
+      panel.style.height='220px';
+    }
+    const y1=$('ywin'),y2=$('ywin2');
+    if(y1){
+      y1.style.display='block';y1.style.left='8px';y1.style.top='8px';y1.style.width=`${(Math.max(180,pinfoW)-26)/2}px`;y1.style.height='204px';
+      $('ywinTitle').textContent='Y profile 1';
+      const c=yCanvas.getContext('2d'),w=(Math.max(180,pinfoW)-26)/2,h=182;
+      yCanvas.width=Math.max(1,Math.round(w*devicePixelRatio));yCanvas.height=Math.max(1,Math.round(h*devicePixelRatio));c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);c.clearRect(0,0,w,h);c.fillStyle='#fff';c.fillRect(0,0,w,h);c.strokeStyle='#d7dde4';c.strokeRect(.5,.5,w-1,h-1);c.fillStyle='#8794a3';c.font='12px Segoe UI';c.fillText('Waiting',8,20);
+    }
+    if(y2){
+      const w=(Math.max(180,pinfoW)-26)/2,h=182;
+      y2.style.display='block';y2.style.left=`${16+w}px`;y2.style.top='8px';y2.style.width=`${w}px`;y2.style.height='204px';
+      y2.querySelector('.ypairTitle').textContent='Y profile 2';
+      const can=$('yprofile2'),c=can.getContext('2d');
+      can.width=Math.max(1,Math.round(w*devicePixelRatio));can.height=Math.max(1,Math.round(h*devicePixelRatio));c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);c.clearRect(0,0,w,h);c.fillStyle='#fff';c.fillRect(0,0,w,h);c.strokeStyle='#d7dde4';c.strokeRect(.5,.5,w-1,h-1);c.fillStyle='#8794a3';c.font='12px Segoe UI';c.fillText('Waiting',8,20);
+    }
+    return;
+  }
+  const x1=midpointX(1,2),x2=midpointX(2,8);
+  const p1=verticalProfileAtX(x1),p2=verticalProfileAtX(x2);
+  const top=i2s(0,st.roi.y).y,bottom=i2s(0,st.roi.y+st.roi.h).y,roiLeft=i2s(st.roi.x,0).x;
+  const h=bottom-top,gap=10;
+  const areaW=Math.max(180,pinfoW);
+  const left=Math.max(8,roiLeft-areaW-24);
+  const w=Math.max(72,(areaW-gap)/2);
+  drawYWindow($('ywin'),yCanvas,p1,'Y profile 1',top,left,w,h);
+  drawYWindow($('ywin2'),$('yprofile2'),p2,'Y profile 2',top,left+w+gap,w,h);
+  st.yProfileX=x1;st.yProfile=p1;
+}
+
+function drawOneXProfile(p,yTop,h,label,marks){
+  if(!p)return;
+  const r=profCanvas.getBoundingClientRect();
+  const x0=8,x1=r.width-8;
+  let lo=1e9,hi=-1e9;
+  for(const v of p.v){lo=Math.min(lo,v);hi=Math.max(hi,v)}
+  pctx.strokeStyle='#d7dde4';pctx.strokeRect(x0,yTop,x1-x0,h);
+  pctx.fillStyle='#111';pctx.font='12px Segoe UI';pctx.fillText(label,x0+6,yTop+14);
+  pctx.strokeStyle='#2c6da3';pctx.lineWidth=2;pctx.beginPath();
+  for(let i=0;i<p.v.length;i++){
+    const x=x0+i/(p.v.length-1)*(x1-x0);
+    const y=yTop+h-(p.v[i]-lo)/Math.max(1,hi-lo)*h;
+    i?pctx.lineTo(x,y):pctx.moveTo(x,y);
+  }
+  pctx.stroke();
+  for(const [x,col,lab] of marks){
+    const sx=x0+(x-p.x0)/(p.v.length-1)*(x1-x0);
+    pctx.strokeStyle=col;pctx.beginPath();pctx.moveTo(sx,yTop);pctx.lineTo(sx,yTop+h);pctx.stroke();
+    pctx.fillStyle=col;pctx.fillText(lab,sx+4,yTop+14);
+  }
+}
+
+function drawProfile(){
+  const r=profCanvas.getBoundingClientRect();
+  pctx.clearRect(0,0,r.width,r.height);
+  pctx.fillStyle='white';pctx.fillRect(0,0,r.width,r.height);
+  pctx.strokeStyle='#d7dde4';pctx.strokeRect(.5,.5,r.width-1,r.height-1);
+  if(!st.measure||!st.roi)return;
+  const gap=12,h=(r.height-36-gap)/2,top1=18,top2=18+h+gap;
+  const wc=profileAt(st.measure.wc),wb=profileAt(st.measure.wb);
+  drawOneXProfile(wc,top1,h,'WC profile',st.nodes?[[node(3).x,'#d11f3a','L'],[node(7).x,'#009b72','R1'],[node(10).x,'#009b72','R2']]:[]);
+  drawOneXProfile(wb,top2,h,'WB profile',st.nodes?[[node(4).x,'#d11f3a','L'],[node(6).x,'#009b72','R1'],[node(11).x,'#009b72','R2']]:[]);
+  $('pinfo').innerHTML='<span class="badge">Profile</span>Y profile 1: midpoint of 1-2<br>Y profile 2: midpoint of 2-8<br><br>WC/WB X profiles are drawn over the ROI range.';
+}
+
+function snapTripletAtY(y,seeds){
+  const p=profileAt(y);if(!p)return null;
+  const span=Math.max(8,st.roi.w*.055);
+  const xs=[
+    snapEdgeNear(p,seeds[0],span,false),
+    snapEdgeNear(p,seeds[1],span,true),
+    snapEdgeNear(p,seeds[2],span,false)
+  ];
+  const minGap=Math.max(5,st.roi.w*.018);
+  if(!(xs[0]<xs[1]-minGap&&xs[1]<xs[2]-minGap))return null;
+  return xs;
+}
+
+function enforcePairGap(leftId,rightId,minGap=5){
+  const l=node(leftId),r=node(rightId);if(!l||!r)return;
+  if(l.x>r.x-minGap){
+    const mid=(l.x+r.x)/2;
+    l.x=clamp(mid-minGap/2,st.roi.x,st.roi.x+st.roi.w);
+    r.x=clamp(Math.max(mid+minGap/2,l.x+minGap),st.roi.x,st.roi.x+st.roi.w);
+    if(l.x>r.x-minGap)l.x=clamp(r.x-minGap,st.roi.x,st.roi.x+st.roi.w);
+  }
+}
+
+function enforceLrrOrder(minGap=5){
+  if(!st.nodes||!st.roi)return;
+  for(const [a,b] of [[1,2],[2,8],[8,9],[4,6],[3,7],[7,10],[6,11]]){
+    enforcePairGap(a,b,minGap);
+  }
+  for(const ids of [[2,8,9],[3,7,10],[4,6,11]]){
+    const a=node(ids[0]),b=node(ids[1]),c=node(ids[2]);if(!a||!b||!c)continue;
+    if(b.x<a.x+minGap)b.x=clamp(a.x+minGap,st.roi.x,st.roi.x+st.roi.w);
+    if(c.x<b.x+minGap)c.x=clamp(b.x+minGap,st.roi.x,st.roi.x+st.roi.w);
+    if(c.x>st.roi.x+st.roi.w){
+      c.x=st.roi.x+st.roi.w;
+      b.x=clamp(c.x-minGap,st.roi.x,st.roi.x+st.roi.w);
+      a.x=clamp(b.x-minGap,st.roi.x,st.roi.x+st.roi.w);
+    }
+  }
+}
+
+function lineAngleAtMid(xTop,yTop,xMid,yMid,xBot,yBot){
+  const ax=xTop-xMid,ay=yTop-yMid,bx=xBot-xMid,by=yBot-yMid;
+  const den=Math.max(1e-9,Math.hypot(ax,ay)*Math.hypot(bx,by));
+  return Math.acos(clamp((ax*bx+ay*by)/den,-1,1))*180/Math.PI;
+}
+
+function tripletStraightScore(wa,wc,wb){
+  let score=0;
+  for(let i=0;i<3;i++){
+    const ang=lineAngleAtMid(wa[i],st.measure.wa,wc[i],st.measure.wc,wb[i],st.measure.wb);
+    const dev=Math.abs(180-ang);
+    score+=dev>10?1000+dev*8:dev;
+  }
+  return score;
+}
+
+function wcTripletCandidates(){
+  const p=profileAt(st.measure.wc);if(!p)return [];
+  const falls=slopeMidpointCandidates(p,true);
+  const rises=slopeMidpointCandidates(p,false);
+  const minGap=Math.max(5,st.roi.w*.022),maxGap=st.roi.w*.42;
+  const triples=[];
+  for(const l of falls){
+    for(const r1 of rises.filter(r=>r.x>l.x+minGap&&r.x<l.x+maxGap)){
+      const w1=r1.x-l.x;
+      for(const r2 of falls.filter(f=>f.x>r1.x+minGap&&f.x<r1.x+Math.max(maxGap,w1*1.9))){
+        const wc=[l.x,r1.x,r2.x];
+        const wa=snapTripletAtY(st.measure.wa,wc);
+        const wb=snapTripletAtY(st.measure.wb,wc);
+        if(!wa||!wb)continue;
+        const straight=tripletStraightScore(wa,wc,wb);
+        const periodShape=Math.abs((r2.x-r1.x)-w1);
+        const current=st.nodes?Math.abs(l.x-node(3).x)+Math.abs(r1.x-node(7).x)+Math.abs(r2.x-node(10).x):0;
+        triples.push({l:l.x,r1:r1.x,r2:r2.x,wa,wb,score:straight*6+periodShape*.25+current*.15});
+      }
+    }
+  }
+  return triples.sort((a,b)=>a.score-b.score);
+}
+
+function applyWcTriplet(t){
+  node(3).x=t.l;node(7).x=t.r1;node(10).x=t.r2;
+  const wa=t.wa||snapTripletAtY(st.measure.wa,[t.l,t.r1,t.r2]);
+  const wb=t.wb||snapTripletAtY(st.measure.wb,[t.l,t.r1,t.r2]);
+  if(wa){node(2).x=wa[0];node(8).x=wa[1];node(9).x=wa[2]}
+  if(wb){node(4).x=wb[0];node(6).x=wb[1];node(11).x=wb[2]}
+  node(5).x=(node(4).x+node(6).x)/2;
+  node(12).x=node(1).x;
+  enforceLrrOrder(5);
+}
+
+scan=function(){
+  if(!st.roi){alert('Draw ROI first.');return}
+  if(!st.nodes)setupTemplate();
+  const wa=strongestVerticalEdgeY();
+  if(wa!=null){
+    st.measure.wa=wa;
+    const bottomGuess=st.roi.y+st.roi.h*.86;
+    st.measure.wb=clamp(Math.max(st.measure.wb||bottomGuess,bottomGuess),st.roi.y+st.roi.h*.50,st.roi.y+st.roi.h*.96);
+    st.measure.wc=st.measure.wa+(st.measure.wb-st.measure.wa)*.5;
+  }
+  syncY();
+  const candidates=wcTripletCandidates();
+  if(candidates.length){
+    st.autoFitStep=(st.autoFitStep||0)%Math.min(candidates.length,8);
+    applyWcTriplet(candidates[st.autoFitStep]);
+    st.autoFitStep++;
+    $('hint').textContent='Auto fit: WC uses L falling -> R1 rising -> R2 falling. WA/WB are snapped with the same slope directions; straight columns near 180 deg are preferred. Press again for next match.';
+  }else{
+    oldScanForML();
+    $('hint').textContent='Auto fit fallback: L/R1/R2 falling-rising-falling triplet was not found clearly.';
+  }
+  delete st.measure.heightTop;delete st.measure.heightBottom;
+  enforceLrrOrder(5);
+  syncY();updateMetrics();draw();drawProfile();
+};
+$('scan').onclick=scan;
+
+const dragNodeBeforeGap=dragNode;
+dragNode=function(id,x,y){
+  dragNodeBeforeGap(id,x,y);
+  enforceLrrOrder(5);
+};
+
+const moveColumnBeforeGap=moveColumn;
+moveColumn=function(id,x,y){
+  moveColumnBeforeGap(id,x,y);
+  enforceLrrOrder(5);
+};
+
+const drawBeforeGap=draw;
+draw=function(){
+  enforceLrrOrder(5);
+  drawBeforeGap();
+  drawMainYProfile();
+};
+
+function installYProfilePanelFinal(){
+  const style=document.createElement('style');
+  style.textContent=`
+    #yProfilePanel{position:fixed!important;display:block;background:#fff;border:1px solid #d7dde4;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:9999!important;pointer-events:none;overflow:hidden}
+    #yProfilePanel .ypair{position:absolute!important;box-shadow:none!important;border:1px solid #7b4ab8!important;border-radius:5px!important}
+  `;
+  document.head.appendChild(style);
+  if(!$('yProfilePanel')){
+    const panel=document.createElement('div');
+    panel.id='yProfilePanel';
+    stage.appendChild(panel);
+    panel.appendChild($('ywin'));
+    panel.appendChild($('ywin2'));
+  }
+}
+
+function drawMainYProfile(){
+  const panel=$('yProfilePanel');
+  if(!st.roi||!st.nodes){
+    const pinfoW=Math.round($('pinfo')?.getBoundingClientRect().width||220);
+    const panelW=Math.max(180,pinfoW),panelH=220;
+    if(panel){
+      panel.style.display='block';
+      panel.style.left='16px';
+      panel.style.top='96px';
+      panel.style.width=`${panelW}px`;
+      panel.style.height=`${panelH}px`;
+    }
+    const y1=$('ywin'),y2=$('ywin2');
+    const gap=10,pad=8,innerW=(panelW-pad*2-gap)/2,innerH=panelH-pad*2;
+    const drawWaiting=(win,can,title,left)=>{
+      if(!win||!can)return;
+      win.style.display='block';
+      win.style.left=`${left}px`;
+      win.style.top=`${pad}px`;
+      win.style.width=`${innerW}px`;
+      win.style.height=`${innerH}px`;
+      win.querySelector('.ypairTitle').textContent=title;
+      const bodyH=innerH-22,c=can.getContext('2d');
+      can.width=Math.max(1,Math.round(innerW*devicePixelRatio));
+      can.height=Math.max(1,Math.round(bodyH*devicePixelRatio));
+      c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+      c.clearRect(0,0,innerW,bodyH);
+      c.fillStyle='#fff';c.fillRect(0,0,innerW,bodyH);
+      c.strokeStyle='#d7dde4';c.strokeRect(.5,.5,innerW-1,bodyH-1);
+      c.fillStyle='#8794a3';c.font='12px Segoe UI';c.fillText('Waiting',8,20);
+    };
+    drawWaiting(y1,yCanvas,'Y profile 1',pad);
+    drawWaiting(y2,$('yprofile2'),'Y profile 2',pad+innerW+gap);
+    return;
+  }
+  const x1=midpointX(1,2),x2=midpointX(2,8);
+  const p1=verticalProfileAtX(x1),p2=verticalProfileAtX(x2);
+  const top=i2s(0,st.roi.y).y,bottom=i2s(0,st.roi.y+st.roi.h).y,roiLeft=i2s(st.roi.x,0).x;
+  const pinfoW=Math.round($('pinfo')?.getBoundingClientRect().width||220);
+  const panelW=Math.max(180,pinfoW),panelH=Math.max(80,bottom-top);
+  const panelLeft=Math.max(8,roiLeft-panelW-24);
+  panel.style.display='block';
+  panel.style.left=`${panelLeft}px`;
+  panel.style.top=`${top}px`;
+  panel.style.width=`${panelW}px`;
+  panel.style.height=`${panelH}px`;
+  const gap=10,pad=8,titlePad=0;
+  const innerTop=pad,innerH=panelH-pad*2,innerW=(panelW-pad*2-gap)/2;
+  drawYWindow($('ywin'),yCanvas,p1,'Y profile 1',innerTop,pad,innerW,innerH);
+  drawYWindow($('ywin2'),$('yprofile2'),p2,'Y profile 2',innerTop,pad+innerW+gap,innerW,innerH);
+  st.yProfileX=x1;st.yProfile=p1;
+}
+
+function leftGutter(){
+  return Math.max(180,Math.round($('pinfo')?.getBoundingClientRect().width||220));
+}
+
+i2s=function(x,y){
+  return{x:leftGutter()+x*st.view.s+st.view.ox,y:y*st.view.s+st.view.oy};
+};
+s2i=function(x,y){
+  return{x:(x-leftGutter()-st.view.ox)/st.view.s,y:(y-st.view.oy)/st.view.s};
+};
+mouse=function(e){
+  const r=canvas.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;
+  return{sx,sy,...s2i(sx,sy)};
+};
+fit=function(){
+  if(!st.img)return;
+  const r=stage.getBoundingClientRect(),g=leftGutter();
+  const s=Math.min((r.width-g)/st.img.width,r.height/st.img.height)*.96;
+  st.view={s,ox:(r.width-g-st.img.width*s)/2,oy:(r.height-st.img.height*s)/2};
+  draw();
+};
+$('fit').onclick=fit;
+
+const drawBeforeGutter=draw;
+draw=function(){
+  const g=leftGutter(),r=stage.getBoundingClientRect();
+  ctx.save();
+  ctx.clearRect(0,0,r.width,r.height);
+  ctx.fillStyle='#101820';ctx.fillRect(0,0,r.width,r.height);
+  ctx.strokeStyle='rgba(255,255,255,.08)';
+  ctx.beginPath();ctx.moveTo(g+.5,0);ctx.lineTo(g+.5,r.height);ctx.stroke();
+  ctx.restore();
+  drawBeforeGutter();
+  drawMainYProfile();
+};
+
+function drawMainYProfile(){
+  const panel=$('yProfilePanel');
+  const pinfoW=leftGutter(),panelW=pinfoW;
+  const stageRect=stage.getBoundingClientRect();
+  const panelLeft=stageRect.left;
+  const top=stageRect.top;
+  const panelH=stageRect.height;
+  if(panel){
+    panel.style.display='block';
+    panel.style.left=`${panelLeft}px`;
+    panel.style.top=`${top}px`;
+    panel.style.width=`${panelW}px`;
+    panel.style.height=`${panelH}px`;
+  }
+  const y1=$('ywin'),y2=$('ywin2');
+  const gap=12,pad=12,innerW=(panelW-pad*2-gap)/2,innerH=panelH-pad*2;
+  if(!st.roi||!st.nodes){
+    const drawWaiting=(win,can,title,left)=>{
+      if(!win||!can)return;
+      win.style.display='block';win.style.left=`${left}px`;win.style.top=`${pad}px`;win.style.width=`${innerW}px`;win.style.height=`${innerH}px`;
+      win.querySelector('.ypairTitle').textContent=title;
+      const bodyH=innerH-22,c=can.getContext('2d');
+      can.width=Math.max(1,Math.round(innerW*devicePixelRatio));can.height=Math.max(1,Math.round(bodyH*devicePixelRatio));
+      c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);c.clearRect(0,0,innerW,bodyH);
+      c.fillStyle='#fff';c.fillRect(0,0,innerW,bodyH);c.strokeStyle='#d7dde4';c.strokeRect(.5,.5,innerW-1,bodyH-1);
+      c.fillStyle='#8794a3';c.font='12px Segoe UI';c.fillText('Waiting',8,20);
+    };
+    drawWaiting(y1,yCanvas,'Y profile 1',pad);
+    drawWaiting(y2,$('yprofile2'),'Y profile 2',pad+innerW+gap);
+    return;
+  }
+  const x1=midpointX(1,2),x2=midpointX(2,8);
+  const p1=verticalProfileAtX(x1),p2=verticalProfileAtX(x2);
+  drawYWindow(y1,yCanvas,p1,'Y profile 1',pad,pad,innerW,innerH);
+  drawYWindow(y2,$('yprofile2'),p2,'Y profile 2',pad,pad+innerW+gap,innerW,innerH);
+  st.yProfileX=x1;st.yProfile=p1;
+}
+
+function lockFixedYProfileWindow(){
+  const style=document.createElement('style');
+  style.textContent=`
+    #yProfilePanel{position:fixed!important;left:auto;top:auto;z-index:10000!important;background:#e8edf2!important;border:1px solid #cfd8e3!important;border-radius:0!important;box-shadow:none!important;border-left:0!important;border-top:0!important;border-bottom:0!important}
+    #yProfilePanel .ypair{background:#fff!important;border:1px solid #d7dde4!important;border-radius:6px!important}
+    #yProfilePanel .ypairTitle{display:none!important}
+    #yProfilePanel .ypairCanvas{height:100%!important}
+    #canvas{left:var(--ycol,220px)!important;width:calc(100% - var(--ycol,220px))!important}
+    #hint{left:calc(var(--ycol,220px) + 12px)!important}
+  `;
+  document.head.appendChild(style);
+}
+
+const drawMainYProfileLocked=drawMainYProfile;
+drawMainYProfile=function(){
+  document.documentElement.style.setProperty('--ycol',leftGutter()+'px');
+  drawMainYProfileLocked();
+};
+
+function drawYCurveBox(win,can,prof,label,top,left,w,h){
+  if(!win||!can)return;
+  win.style.display='block';win.style.left=`${left}px`;win.style.top=`${top}px`;win.style.width=`${w}px`;win.style.height=`${h}px`;
+  const c=can.getContext('2d');
+  can.width=Math.max(1,Math.round(w*devicePixelRatio));can.height=Math.max(1,Math.round(h*devicePixelRatio));
+  c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  c.clearRect(0,0,w,h);
+  c.fillStyle='#fff';c.fillRect(0,0,w,h);
+  c.strokeStyle='#d7dde4';c.strokeRect(.5,.5,w-1,h-1);
+  c.fillStyle='#111';c.font='12px Segoe UI';c.fillText(label,8,16);
+  if(!prof){c.fillStyle='#8794a3';c.fillText('Waiting',8,34);return}
+  let lo=1e9,hi=-1e9;
+  for(const v of prof.v){lo=Math.min(lo,v);hi=Math.max(hi,v)}
+  const padL=8,padR=8,padT=24,padB=10;
+  c.strokeStyle='#7b4ab8';c.lineWidth=2;c.beginPath();
+  for(let i=0;i<prof.v.length;i++){
+    const x=padL+(prof.v[i]-lo)/Math.max(1,hi-lo)*(w-padL-padR);
+    const y=padT+i/(prof.v.length-1)*(h-padT-padB);
+    i?c.lineTo(x,y):c.moveTo(x,y);
+  }
+  c.stroke();
+  if(st.measure){
+    for(const [yy,name] of [[st.measure.wa,'WA'],[st.measure.wc,'WC'],[st.measure.wb,'WB']]){
+      const y=padT+(yy-prof.y0)/(prof.v.length-1)*(h-padT-padB);
+      if(y<padT||y>h-padB)continue;
+      c.strokeStyle='#111';c.lineWidth=1.2;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();
+      c.fillStyle='#111';c.fillText(name,4,y-3);
+    }
+  }
+}
+
+function drawMainYProfile(){
+  const panel=$('yProfilePanel');
+  const stageRect=stage.getBoundingClientRect();
+  const panelW=leftGutter(),panelH=stageRect.height;
+  if(panel){
+    panel.style.display='block';panel.style.left=`${stageRect.left}px`;panel.style.top=`${stageRect.top}px`;panel.style.width=`${panelW}px`;panel.style.height=`${panelH}px`;
+  }
+  const pad=12,gap=12,h=(panelH-pad*2-gap)/2,w=panelW-pad*2;
+  let p1=null,p2=null;
+  if(st.roi&&st.nodes){
+    p1=verticalProfileAtX(midpointX(1,2));
+    p2=verticalProfileAtX(midpointX(2,8));
+    st.yProfileX=midpointX(1,2);st.yProfile=p1;
+  }
+  drawYCurveBox($('ywin'),yCanvas,p1,'Y profile 1',pad,pad,w,h);
+  drawYCurveBox($('ywin2'),$('yprofile2'),p2,'Y profile 2',pad+h+gap,pad,w,h);
+}
+
+i2s=function(x,y){
+  return{x:x*st.view.s+st.view.ox,y:y*st.view.s+st.view.oy};
+};
+s2i=function(x,y){
+  return{x:(x-st.view.ox)/st.view.s,y:(y-st.view.oy)/st.view.s};
+};
+mouse=function(e){
+  const r=canvas.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;
+  return{sx,sy,...s2i(sx,sy)};
+};
+resize=function(){
+  const g=leftGutter();
+  document.documentElement.style.setProperty('--ycol',g+'px');
+  const r=stage.getBoundingClientRect();
+  const w=Math.max(1,r.width-g),h=Math.max(1,r.height);
+  canvas.width=w*devicePixelRatio;canvas.height=h*devicePixelRatio;
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  const p=profCanvas.getBoundingClientRect();
+  profCanvas.width=p.width*devicePixelRatio;profCanvas.height=p.height*devicePixelRatio;
+  pctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  draw();drawProfile();
+};
+fit=function(){
+  if(!st.img)return;
+  const r=canvas.getBoundingClientRect();
+  const s=Math.min(r.width/st.img.width,r.height/st.img.height)*.96;
+  st.view={s,ox:(r.width-st.img.width*s)/2,oy:(r.height-st.img.height*s)/2};
+  draw();
+};
+$('fit').onclick=fit;
+addEventListener('resize',resize);
+
+const drawBeforeCanvasLock=draw;
+draw=function(){
+  document.documentElement.style.setProperty('--ycol',leftGutter()+'px');
+  drawBeforeCanvasLock();
+  drawMainYProfile();
+};
+
+const canvasFrameStyle=document.createElement('style');
+canvasFrameStyle.textContent=`
+  #canvas{
+    outline:3px solid #ffd400!important;
+    outline-offset:-3px!important;
+  }
+  header .filebtn{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    line-height:1!important;
+    min-width:56px!important;
+  }
+  #calum,#calpx{
+    width:46px!important;
+    min-width:46px!important;
+    text-align:center!important;
+  }
+`;
+document.head.appendChild(canvasFrameStyle);
+
+$('file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f),img=new Image();
+  img.onload=()=>{
+    st.baseImg=img;
+    st.name=f.name;
+    if($('csvname'))$('csvname').value=fileBaseName(st.name)+'_trenchv2.csv';
+    st.roi=null;st.yProfileX=null;st.yProfile=null;st.nodes=null;st.measure=null;st.oxidePts=null;st.rows=[];st.manualDistances=[];
+    st.cal=null;st.umPerPx=null;
+    rebuildRotatedImage();
+    resize();
+    fit();renderRows();
+    URL.revokeObjectURL(url);
+    $('hint').textContent='Image loaded. Use Rot to level image, then set scale and draw ROI.';
+  };
+  img.src=url;
+};
+
+installV2UiFinal();
+installTwoYProfileWindows();
+installProfileLayoutFinal();
+installYProfilePanelFinal();
+lockFixedYProfileWindow();
+installManualMeasure();
+
+const finalProfileAlignStyle=document.createElement('style');
+finalProfileAlignStyle.textContent=`
+  .profile{
+    grid-template-columns:var(--ycol,220px) 1fr!important;
+    gap:0!important;
+    padding:10px 0!important;
+  }
+  #pinfo{
+    width:var(--ycol,220px)!important;
+    border-left:0!important;
+    border-radius:0 6px 6px 0!important;
+  }
+  #profile{
+    width:100%!important;
+    border-radius:6px 0 0 6px!important;
+  }
+`;
+document.head.appendChild(finalProfileAlignStyle);
+
+function xProfileBoundsForRoi(r){
+  const pr=profCanvas.getBoundingClientRect();
+  const cr=canvas.getBoundingClientRect();
+  if(!st.roi){
+    return{x0:8,x1:Math.max(88,r.width-8)};
+  }
+  let x0=i2s(st.roi.x,0).x+cr.left-pr.left;
+  let x1=i2s(st.roi.x+st.roi.w,0).x+cr.left-pr.left;
+  if(x1<x0){const t=x0;x0=x1;x1=t}
+  const minW=80;
+  x0=clamp(x0,8,Math.max(8,r.width-minW-8));
+  x1=clamp(x1,x0+minW,Math.max(x0+minW,r.width-8));
+  return{x0,x1};
+}
+
+drawOneXProfile=function(p,yTop,h,label,marks){
+  if(!p)return;
+  const r=profCanvas.getBoundingClientRect();
+  const {x0,x1}=xProfileBoundsForRoi(r);
+  let lo=1e9,hi=-1e9;
+  for(const v of p.v){lo=Math.min(lo,v);hi=Math.max(hi,v)}
+  pctx.strokeStyle='#d7dde4';pctx.strokeRect(x0,yTop,x1-x0,h);
+  pctx.fillStyle='#111';pctx.font='12px Segoe UI';pctx.fillText(label,x0+6,yTop+14);
+  pctx.strokeStyle='#2c6da3';pctx.lineWidth=2;pctx.beginPath();
+  for(let i=0;i<p.v.length;i++){
+    const x=x0+i/(p.v.length-1)*(x1-x0);
+    const y=yTop+h-(p.v[i]-lo)/Math.max(1,hi-lo)*h;
+    i?pctx.lineTo(x,y):pctx.moveTo(x,y);
+  }
+  pctx.stroke();
+  for(const [x,col,lab] of marks){
+    const sx=x0+(x-p.x0)/(p.v.length-1)*(x1-x0);
+    pctx.strokeStyle=col;pctx.beginPath();pctx.moveTo(sx,yTop);pctx.lineTo(sx,yTop+h);pctx.stroke();
+    pctx.fillStyle=col;pctx.fillText(lab,sx+4,yTop+14);
+  }
+};
+
+drawProfile=function(){
+  const r=profCanvas.getBoundingClientRect();
+  pctx.clearRect(0,0,r.width,r.height);
+  pctx.fillStyle='white';pctx.fillRect(0,0,r.width,r.height);
+  pctx.strokeStyle='#d7dde4';pctx.strokeRect(.5,.5,r.width-1,r.height-1);
+  if(!st.measure||!st.roi){
+    $('pinfo').innerHTML='<span class="badge">Profile</span>Waiting.';
+    return;
+  }
+  const gap=12,h=(r.height-36-gap)/2,top1=18,top2=18+h+gap;
+  const wc=profileAt(st.measure.wc),wb=profileAt(st.measure.wb);
+  drawOneXProfile(wc,top1,h,'WC profile',st.nodes?[[node(3).x,'#d11f3a','L'],[node(7).x,'#009b72','R1'],[node(10).x,'#009b72','R2']]:[]);
+  drawOneXProfile(wb,top2,h,'WB profile',st.nodes?[[node(4).x,'#d11f3a','L'],[node(6).x,'#009b72','R1'],[node(11).x,'#009b72','R2']]:[]);
+  $('pinfo').innerHTML='<span class="badge">Profile</span>Y1/Y2 are shown in one left panel.<br><br>WC/WB X profiles are aligned to the ROI width and screen position.';
+};
+
+drawMainYProfile=function(){
+  const panel=$('yProfilePanel');
+  const stageRect=stage.getBoundingClientRect();
+  const panelW=leftGutter(),panelH=stageRect.height;
+  document.documentElement.style.setProperty('--ycol',panelW+'px');
+  if(panel){
+    panel.style.display='block';
+    panel.style.left=`${stageRect.left}px`;
+    panel.style.top=`${stageRect.top}px`;
+    panel.style.width=`${panelW}px`;
+    panel.style.height=`${panelH}px`;
+  }
+  const pad=12,gap=12,w=(panelW-pad*2-gap)/2;
+  let top=pad,h=Math.min(260,Math.max(120,panelH-pad*2));
+  let p1=null,p2=null;
+  if(st.roi&&st.nodes){
+    const y0=i2s(0,st.roi.y).y;
+    const y1=i2s(0,st.roi.y+st.roi.h).y;
+    h=Math.max(80,Math.abs(y1-y0));
+    top=clamp(Math.min(y0,y1),pad,Math.max(pad,panelH-h-pad));
+    p1=verticalProfileAtX(midpointX(1,2));
+    p2=verticalProfileAtX(midpointX(2,8));
+    st.yProfileX=midpointX(1,2);st.yProfile=p1;
+  }
+  drawYCurveBox($('ywin'),yCanvas,p1,'Y profile 1',top,pad,w,h);
+  drawYCurveBox($('ywin2'),$('yprofile2'),p2,'Y profile 2',top,pad+w+gap,w,h);
+};
+
+const hintAutoHideStyle=document.createElement('style');
+hintAutoHideStyle.textContent='#hint{transition:opacity .18s ease!important}';
+document.head.appendChild(hintAutoHideStyle);
+const hintEl=$('hint');
+let hintHideTimer=null;
+function scheduleHintHide(){
+  if(!hintEl)return;
+  hintEl.style.display='block';
+  hintEl.style.opacity='1';
+  clearTimeout(hintHideTimer);
+  hintHideTimer=setTimeout(()=>{
+    hintEl.style.opacity='0';
+    setTimeout(()=>{
+      if(hintEl.style.opacity==='0')hintEl.style.display='none';
+    },220);
+  },10000);
+}
+if(hintEl){
+  new MutationObserver(scheduleHintHide).observe(hintEl,{childList:true,characterData:true,subtree:true});
+  scheduleHintHide();
+}
+
+function installV3ContourWindow(){
+  if($('v3ContourWin'))return;
+  const style=document.createElement('style');
+  style.textContent=`
+    #v3ContourWin{position:absolute;display:none;width:360px;background:#fff;border:1px solid #d7dde4;border-radius:7px;box-shadow:0 10px 28px rgba(0,0,0,.30);z-index:12000;overflow:hidden}
+    #v3ContourTitle{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 9px;background:#24313e;color:#fff;font-size:13px;cursor:move;user-select:none}
+    #v3ContourTitle span:last-child{font-size:12px;color:#9bd1ff}
+    #v3ContourCanvas{display:block;width:100%;height:260px;background:#fff}
+    #v3ContourInfo{padding:6px 9px;border-top:1px solid #e5eaf0;color:#516070;font-size:12px;line-height:1.35;background:#fff}
+  `;
+  document.head.appendChild(style);
+  const win=document.createElement('div');
+  win.id='v3ContourWin';
+  win.innerHTML='<div id="v3ContourTitle"><span>ROI contour 20 levels</span><span>drag</span></div><canvas id="v3ContourCanvas"></canvas><div id="v3ContourInfo">白底黑线：ROI 灰度强度 20 级等高线图</div>';
+  stage.appendChild(win);
+  const title=$('v3ContourTitle');
+  title.onmousedown=e=>{
+    const r=win.getBoundingClientRect(),sr=stage.getBoundingClientRect();
+    st.v3ContourDrag={dx:e.clientX-r.left,dy:e.clientY-r.top,stageLeft:sr.left,stageTop:sr.top};
+    e.preventDefault();
+  };
+  addEventListener('mousemove',e=>{
+    if(!st.v3ContourDrag)return;
+    const sr=stage.getBoundingClientRect(),wr=win.getBoundingClientRect();
+    const left=clamp(e.clientX-sr.left-st.v3ContourDrag.dx,0,Math.max(0,sr.width-wr.width));
+    const top=clamp(e.clientY-sr.top-st.v3ContourDrag.dy,0,Math.max(0,sr.height-wr.height));
+    st.v3ContourPos={left,top,manual:true};
+    win.style.left=`${left}px`;win.style.top=`${top}px`;
+  });
+  addEventListener('mouseup',()=>{st.v3ContourDrag=null});
+}
+
+function normalizedV3Roi(){
+  if(!st.roi||!st.gray)return null;
+  const x0=clamp(Math.round(st.roi.x),0,st.gray.w-1),x1=clamp(Math.round(st.roi.x+st.roi.w),0,st.gray.w-1);
+  const y0=clamp(Math.round(st.roi.y),0,st.gray.h-1),y1=clamp(Math.round(st.roi.y+st.roi.h),0,st.gray.h-1);
+  return{x:Math.min(x0,x1),y:Math.min(y0,y1),w:Math.max(1,Math.abs(x1-x0)),h:Math.max(1,Math.abs(y1-y0))};
+}
+
+function positionV3ContourWindow(){
+  const win=$('v3ContourWin');if(!win||!st.roi)return;
+  const sr=stage.getBoundingClientRect(),wr=win.getBoundingClientRect();
+  if(st.v3ContourPos?.manual){
+    win.style.left=`${clamp(st.v3ContourPos.left,0,Math.max(0,sr.width-wr.width))}px`;
+    win.style.top=`${clamp(st.v3ContourPos.top,0,Math.max(0,sr.height-wr.height))}px`;
+    return;
+  }
+  const cr=canvas.getBoundingClientRect();
+  const left=clamp(cr.right-sr.left-wr.width-14,0,Math.max(0,sr.width-wr.width));
+  const top=clamp(cr.top-sr.top+14,0,Math.max(0,sr.height-wr.height));
+  win.style.left=`${left}px`;win.style.top=`${top}px`;
+}
+
+function sampleRoiGrid(r,gw,gh){
+  const values=new Float32Array(gw*gh);
+  let lo=255,hi=0;
+  for(let y=0;y<gh;y++){
+    const iy=clamp(Math.round(r.y+(y+.5)*r.h/gh),0,st.gray.h-1);
+    for(let x=0;x<gw;x++){
+      const ix=clamp(Math.round(r.x+(x+.5)*r.w/gw),0,st.gray.w-1);
+      const v=st.gray.d[iy*st.gray.w+ix];
+      values[y*gw+x]=v;lo=Math.min(lo,v);hi=Math.max(hi,v);
+    }
+  }
+  return{values,lo,hi};
+}
+
+function drawMarchingContours(c,grid,gw,gh,x0,y0,w,h){
+  const {values,lo,hi}=grid;
+  const levels=20;
+  const interp=(p1,p2,v1,v2,lev)=>{
+    const t=Math.abs(v2-v1)<1e-6?.5:(lev-v1)/(v2-v1);
+    return{x:p1.x+(p2.x-p1.x)*t,y:p1.y+(p2.y-p1.y)*t};
+  };
+  for(let li=1;li<=levels;li++){
+    const lev=lo+(hi-lo)*li/(levels+1);
+    c.strokeStyle='#111';c.lineWidth=li%5===0?1.2:.8;c.beginPath();
+    for(let y=0;y<gh-1;y++){
+      for(let x=0;x<gw-1;x++){
+        const v0=values[y*gw+x],v1=values[y*gw+x+1],v2=values[(y+1)*gw+x+1],v3=values[(y+1)*gw+x];
+        const px=x0+x/(gw-1)*w,py=y0+y/(gh-1)*h,nx=x0+(x+1)/(gw-1)*w,ny=y0+(y+1)/(gh-1)*h;
+        const pts=[];
+        if((v0-lev)*(v1-lev)<0)pts.push(interp({x:px,y:py},{x:nx,y:py},v0,v1,lev));
+        if((v1-lev)*(v2-lev)<0)pts.push(interp({x:nx,y:py},{x:nx,y:ny},v1,v2,lev));
+        if((v2-lev)*(v3-lev)<0)pts.push(interp({x:nx,y:ny},{x:px,y:ny},v2,v3,lev));
+        if((v3-lev)*(v0-lev)<0)pts.push(interp({x:px,y:ny},{x:px,y:py},v3,v0,lev));
+        if(pts.length===2){c.moveTo(pts[0].x,pts[0].y);c.lineTo(pts[1].x,pts[1].y)}
+        else if(pts.length===4){c.moveTo(pts[0].x,pts[0].y);c.lineTo(pts[1].x,pts[1].y);c.moveTo(pts[2].x,pts[2].y);c.lineTo(pts[3].x,pts[3].y)}
+      }
+    }
+    c.stroke();
+  }
+}
+
+function drawV3ContourWindow(){
+  installV3ContourWindow();
+  const win=$('v3ContourWin'),can=$('v3ContourCanvas');
+  if(!st.roi||!st.gray){if(win)win.style.display='none';return}
+  win.style.display='block';
+  positionV3ContourWindow();
+  const r=normalizedV3Roi();if(!r)return;
+  const cssW=can.clientWidth||360,cssH=can.clientHeight||260;
+  can.width=Math.max(1,Math.round(cssW*devicePixelRatio));can.height=Math.max(1,Math.round(cssH*devicePixelRatio));
+  const c=can.getContext('2d');
+  c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  c.clearRect(0,0,cssW,cssH);c.fillStyle='#fff';c.fillRect(0,0,cssW,cssH);
+  const scale=Math.min((cssW-18)/r.w,(cssH-18)/r.h),dw=r.w*scale,dh=r.h*scale,x0=(cssW-dw)/2,y0=(cssH-dh)/2;
+  let lo=255,hi=0;
+  for(let y=0;y<r.h;y++){
+    for(let x=0;x<r.w;x++){
+      const v=st.gray.d[(r.y+y)*st.gray.w+(r.x+x)]|0;
+      lo=Math.min(lo,v);hi=Math.max(hi,v);
+    }
+  }
+  c.save();c.globalAlpha=1;
+  const gw=Math.min(150,Math.max(24,Math.round(r.w/2))),gh=Math.min(120,Math.max(24,Math.round(r.h/2)));
+  drawMarchingContours(c,sampleRoiGrid(r,gw,gh),gw,gh,x0,y0,dw,dh);
+  c.restore();
+  c.strokeStyle='#111';c.lineWidth=1;c.strokeRect(x0+.5,y0+.5,dw-1,dh-1);
+  $('v3ContourInfo').textContent=`20-level black contour  min ${fmt(lo,1)} / max ${fmt(hi,1)} / ${r.w} x ${r.h}px`;
+}
+
+const drawBeforeV3Contour=draw;
+draw=function(){
+  drawBeforeV3Contour();
+  drawV3ContourWindow();
+};
+const resizeBeforeV3Contour=resize;
+resize=function(){
+  resizeBeforeV3Contour();
+  drawV3ContourWindow();
+};
+addEventListener('resize',resize);
+const mouseUpBeforeV3Contour=canvas.onmouseup;
+canvas.onmouseup=e=>{
+  mouseUpBeforeV3Contour(e);
+  if(st.roi){
+    st.v3ContourPos=st.v3ContourPos&&st.v3ContourPos.manual?st.v3ContourPos:null;
+    drawV3ContourWindow();
+  }
+};
+const fileChangeBeforeV3Contour=$('file').onchange;
+$('file').onchange=e=>{
+  st.v3ContourPos=null;
+  const win=$('v3ContourWin');if(win)win.style.display='none';
+  fileChangeBeforeV3Contour(e);
+};
+
+const v3ProfileMapStyle=document.createElement('style');
+v3ProfileMapStyle.textContent=`
+  #v3ContourWin{width:620px!important}
+  #v3ContourCanvas{height:300px!important}
+`;
+document.head.appendChild(v3ProfileMapStyle);
+
+function drawV3ProfileMaps(c,r,cssW,cssH){
+  const pad=18,gap=18;
+  const leftW=Math.floor((cssW-pad*2-gap)/2),rightW=leftW;
+  const xL=pad,xR=pad+leftW+gap,y0=28,h=cssH-58;
+  let lo=255,hi=0;
+  for(let y=0;y<r.h;y++){
+    for(let x=0;x<r.w;x++){
+      const v=st.gray.d[(r.y+y)*st.gray.w+(r.x+x)];
+      lo=Math.min(lo,v);hi=Math.max(hi,v);
+    }
+  }
+  const span=Math.max(1,hi-lo);
+  c.strokeStyle='#d7dde4';c.lineWidth=1;
+  c.strokeRect(xL,y0,leftW,h);c.strokeRect(xR,y0,rightW,h);
+  c.fillStyle='#111';c.font='12px Segoe UI';
+  c.fillText('Y profiles: 50 lines',xL,y0-8);
+  const xLines=clamp(Math.round(50*r.h/Math.max(1,r.w)),8,120);
+  c.fillText(`X profiles: ${xLines} lines`,xR,y0-8);
+
+  c.save();
+  c.strokeStyle='#111';
+  c.lineWidth=.75;
+  const yLines=50;
+  for(let li=0;li<yLines;li++){
+    const ix=clamp(Math.round(r.x+(li+.5)*r.w/yLines),0,st.gray.w-1);
+    const laneX=xL+(li+.5)/yLines*leftW;
+    const laneW=Math.max(2,leftW/yLines*.72);
+    c.beginPath();
+    for(let j=0;j<=h;j++){
+      const iy=clamp(Math.round(r.y+j/h*r.h),0,st.gray.h-1);
+      const v=st.gray.d[iy*st.gray.w+ix];
+      const xx=laneX+(v-lo)/span*laneW-laneW/2;
+      const yy=y0+j;
+      j?c.lineTo(xx,yy):c.moveTo(xx,yy);
+    }
+    c.stroke();
+  }
+
+  for(let li=0;li<xLines;li++){
+    const iy=clamp(Math.round(r.y+(li+.5)*r.h/xLines),0,st.gray.h-1);
+    const laneY=y0+(li+.5)/xLines*h;
+    const laneH=Math.max(2,h/xLines*.72);
+    c.beginPath();
+    for(let j=0;j<=rightW;j++){
+      const ix=clamp(Math.round(r.x+j/rightW*r.w),0,st.gray.w-1);
+      const v=st.gray.d[iy*st.gray.w+ix];
+      const xx=xR+j;
+      const yy=laneY-(v-lo)/span*laneH+laneH/2;
+      j?c.lineTo(xx,yy):c.moveTo(xx,yy);
+    }
+    c.stroke();
+  }
+  c.restore();
+  c.fillStyle='#516070';c.font='11px Segoe UI';
+  c.fillText(`gray min ${fmt(lo,1)} / max ${fmt(hi,1)} / ROI ${r.w} x ${r.h}px`,pad,cssH-16);
+  return{lo,hi,xLines};
+}
+
+drawV3ContourWindow=function(){
+  installV3ContourWindow();
+  const win=$('v3ContourWin'),can=$('v3ContourCanvas');
+  if(!st.roi||!st.gray){if(win)win.style.display='none';return}
+  win.style.display='block';
+  const title=$('v3ContourTitle');
+  if(title)title.querySelector('span').textContent='ROI profile maps';
+  positionV3ContourWindow();
+  const r=normalizedV3Roi();if(!r)return;
+  const cssW=can.clientWidth||620,cssH=can.clientHeight||300;
+  can.width=Math.max(1,Math.round(cssW*devicePixelRatio));
+  can.height=Math.max(1,Math.round(cssH*devicePixelRatio));
+  const c=can.getContext('2d');
+  c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  c.clearRect(0,0,cssW,cssH);
+  c.fillStyle='#fff';c.fillRect(0,0,cssW,cssH);
+  const info=drawV3ProfileMaps(c,r,cssW,cssH);
+  $('v3ContourInfo').textContent=`Left: 50 Y-direction profiles. Right: ${info.xLines} X-direction profiles from ROI aspect ratio.`;
+};
+
+const v4ProfileDotStyle=document.createElement('style');
+v4ProfileDotStyle.textContent=`
+  #v3ContourWin{width:720px!important}
+  #v3ContourCanvas{height:360px!important}
+  #v3ContourInfo{font-size:12px!important}
+`;
+document.head.appendChild(v4ProfileDotStyle);
+
+function v4Palette(t){
+  t=clamp(t,0,1);
+  const stops=[
+    [0.00,[30,64,175]],
+    [0.33,[0,158,96]],
+    [0.66,[244,203,66]],
+    [1.00,[210,38,48]]
+  ];
+  for(let i=0;i<stops.length-1;i++){
+    const [a,ca]=stops[i],[b,cb]=stops[i+1];
+    if(t>=a&&t<=b){
+      const u=(t-a)/(b-a);
+      const r=Math.round(ca[0]+(cb[0]-ca[0])*u);
+      const g=Math.round(ca[1]+(cb[1]-ca[1])*u);
+      const bl=Math.round(ca[2]+(cb[2]-ca[2])*u);
+      return`rgb(${r},${g},${bl})`;
+    }
+  }
+  return'rgb(210,38,48)';
+}
+
+function v4Stats(r){
+  let lo=255,hi=0;
+  for(let y=0;y<r.h;y++){
+    const yy=r.y+y;
+    for(let x=0;x<r.w;x++){
+      const v=st.gray.d[yy*st.gray.w+r.x+x];
+      lo=Math.min(lo,v);hi=Math.max(hi,v);
+    }
+  }
+  return{lo,hi,span:Math.max(1,hi-lo)};
+}
+
+function v4SeriesY(r,x,n,stats){
+  const arr=[];
+  for(let i=0;i<n;i++){
+    const yy=clamp(Math.round(r.y+i*(r.h-1)/Math.max(1,n-1)),0,st.gray.h-1);
+    const xx=clamp(Math.round(x),0,st.gray.w-1);
+    const v=st.gray.d[yy*st.gray.w+xx];
+    arr.push({pos:i/(Math.max(1,n-1)),v,level:Math.floor((v-stats.lo)/stats.span*31)});
+  }
+  return arr;
+}
+
+function v4SeriesX(r,y,n,stats){
+  const arr=[];
+  for(let i=0;i<n;i++){
+    const xx=clamp(Math.round(r.x+i*(r.w-1)/Math.max(1,n-1)),0,st.gray.w-1);
+    const yy=clamp(Math.round(y),0,st.gray.h-1);
+    const v=st.gray.d[yy*st.gray.w+xx];
+    arr.push({pos:i/(Math.max(1,n-1)),v,level:Math.floor((v-stats.lo)/stats.span*31)});
+  }
+  return arr;
+}
+
+function v4DerivativeBreaks(series){
+  if(series.length<5)return new Set();
+  const d=[];
+  for(let i=1;i<series.length;i++)d.push(Math.abs(series[i].v-series[i-1].v));
+  const sorted=[...d].sort((a,b)=>a-b);
+  const q=sorted[Math.floor(sorted.length*.88)]||0;
+  const breaks=new Set();
+  for(let i=1;i<series.length-1;i++){
+    const score=Math.max(Math.abs(series[i].v-series[i-1].v),Math.abs(series[i+1].v-series[i].v));
+    if(score>=q&&score>3)breaks.add(i);
+  }
+  return breaks;
+}
+
+function drawV4DotMap(c,x,y,w,h,title,orientation,r,stats,lineCount,pointCount){
+  c.save();
+  c.strokeStyle='#d7dde4';c.lineWidth=1;c.strokeRect(x,y,w,h);
+  c.fillStyle='#111';c.font='12px Segoe UI';c.fillText(title,x+6,y+14);
+  const left=x+14,top=y+26,plotW=w-28,plotH=h-42;
+  c.fillStyle='#f8fafc';c.fillRect(left,top,plotW,plotH);
+  c.strokeStyle='#edf1f5';c.lineWidth=1;
+  for(let g=1;g<4;g++){
+    const gx=left+plotW*g/4,gy=top+plotH*g/4;
+    c.beginPath();c.moveTo(gx,top);c.lineTo(gx,top+plotH);c.moveTo(left,gy);c.lineTo(left+plotW,gy);c.stroke();
+  }
+  const radius=Math.max(1.2,Math.min(3.2,plotW/pointCount*.28,plotH/lineCount*.35));
+  let breakCount=0;
+  for(let li=0;li<lineCount;li++){
+    const base=orientation==='Y'
+      ? left+(li+.5)/lineCount*plotW
+      : top+(li+.5)/lineCount*plotH;
+    const coord=orientation==='Y'
+      ? r.x+(li+.5)*r.w/lineCount
+      : r.y+(li+.5)*r.h/lineCount;
+    const series=orientation==='Y'?v4SeriesY(r,coord,pointCount,stats):v4SeriesX(r,coord,pointCount,stats);
+    const breaks=v4DerivativeBreaks(series);
+    breakCount+=breaks.size;
+    for(let pi=0;pi<series.length;pi++){
+      const p=series[pi],t=(p.v-stats.lo)/stats.span;
+      const px=orientation==='Y'
+        ? base+(t-.5)*Math.max(2,plotW/lineCount*.72)
+        : left+p.pos*plotW;
+      const py=orientation==='Y'
+        ? top+p.pos*plotH
+        : base-(t-.5)*Math.max(2,plotH/lineCount*.72);
+      c.beginPath();
+      c.fillStyle=v4Palette(t);
+      c.arc(px,py,breaks.has(pi)?radius*1.75:radius,0,Math.PI*2);
+      c.fill();
+      if(breaks.has(pi)){
+        c.strokeStyle='#111';c.lineWidth=.8;c.stroke();
+      }
+    }
+  }
+  c.fillStyle='#516070';c.font='11px Segoe UI';
+  c.fillText(`${lineCount} lines / ${pointCount} pts each / breaks ${breakCount}`,x+6,y+h-8);
+  c.restore();
+  return breakCount;
+}
+
+drawV3ContourWindow=function(){
+  installV3ContourWindow();
+  const win=$('v3ContourWin'),can=$('v3ContourCanvas');
+  if(!st.roi||!st.gray){if(win)win.style.display='none';return}
+  win.style.display='block';
+  const title=$('v3ContourTitle');
+  if(title)title.querySelector('span').textContent='ROI derivative dot maps V4';
+  positionV3ContourWindow();
+  const r=normalizedV3Roi();if(!r)return;
+  const cssW=can.clientWidth||720,cssH=can.clientHeight||360;
+  can.width=Math.max(1,Math.round(cssW*devicePixelRatio));
+  can.height=Math.max(1,Math.round(cssH*devicePixelRatio));
+  const c=can.getContext('2d');
+  c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  c.clearRect(0,0,cssW,cssH);
+  c.fillStyle='#fff';c.fillRect(0,0,cssW,cssH);
+  const stats=v4Stats(r);
+  const pad=16,gap=16,panelW=(cssW-pad*2-gap)/2,panelH=cssH-52;
+  const yLines=50;
+  const xLines=clamp(Math.round(50*r.h/Math.max(1,r.w)),10,120);
+  const pointY=clamp(Math.round(r.h),80,220);
+  const pointX=clamp(Math.round(r.w),80,260);
+  const by=drawV4DotMap(c,pad,24,panelW,panelH,'Y direction derivative dots', 'Y', r, stats, yLines, pointY);
+  const bx=drawV4DotMap(c,pad+panelW+gap,24,panelW,panelH,'X direction derivative dots', 'X', r, stats, xLines, pointX);
+  const gradX=pad,gradY=cssH-19,gradW=180;
+  for(let i=0;i<gradW;i++){c.fillStyle=v4Palette(i/(gradW-1));c.fillRect(gradX+i,gradY,1,8)}
+  c.strokeStyle='#111';c.strokeRect(gradX+.5,gradY+.5,gradW-1,7);
+  c.fillStyle='#516070';c.font='11px Segoe UI';
+  c.fillText(`low ${fmt(stats.lo,1)}`,gradX,gradY-3);
+  c.fillText(`high ${fmt(stats.hi,1)}`,gradX+gradW-48,gradY-3);
+  $('v3ContourInfo').textContent=`V4: gray levels are detailed from low to high; dots use blue-green-yellow-red palette. Derivative abrupt points: Y ${by}, X ${bx}.`;
+};
+
+function v4XDerivativeScores(){
+  const r=normalizedV3Roi();
+  if(!r||!st.measure)return null;
+  const yA=clamp(Math.round((st.measure.wa??(r.y+r.h*.12))-r.y-r.h*.03),0,r.h-1);
+  const yB=clamp(Math.round((st.measure.wc??(r.y+r.h*.50))-r.y+r.h*.06),0,r.h-1);
+  const from=Math.min(yA,yB),to=Math.max(yA,yB);
+  const scores=new Float32Array(r.w);
+  for(let x=2;x<r.w-2;x++){
+    let s=0,n=0;
+    for(let y=from;y<=to;y+=2){
+      const yy=r.y+y,xx=r.x+x;
+      const d=Math.abs(st.gray.d[yy*st.gray.w+xx+1]-st.gray.d[yy*st.gray.w+xx-1]);
+      s+=d;n++;
+    }
+    scores[x]=n?s/n:0;
+  }
+  const smooth=new Float32Array(r.w);
+  const win=Math.max(2,Math.round(r.w*.006));
+  for(let x=0;x<r.w;x++){
+    let s=0,n=0;
+    for(let k=-win;k<=win;k++){
+      const i=x+k;
+      if(i>=0&&i<r.w){s+=scores[i];n++}
+    }
+    smooth[x]=n?s/n:0;
+  }
+  return{r,scores:smooth,from:r.y+from,to:r.y+to};
+}
+
+function v4DerivativePeaks(minGapPx){
+  const data=v4XDerivativeScores();
+  if(!data)return [];
+  const {r,scores}=data;
+  const peaks=[];
+  for(let x=2;x<r.w-2;x++){
+    if(scores[x]>=scores[x-1]&&scores[x]>=scores[x+1]){
+      peaks.push({x:r.x+x,score:scores[x]});
+    }
+  }
+  peaks.sort((a,b)=>b.score-a.score);
+  const chosen=[];
+  for(const p of peaks){
+    if(chosen.every(q=>Math.abs(q.x-p.x)>=minGapPx))chosen.push(p);
+    if(chosen.length>=18)break;
+  }
+  return chosen.sort((a,b)=>a.x-b.x);
+}
+
+function v4NearestPeak(peaks,target,minX,maxX){
+  let best=null,bestScore=-Infinity;
+  const span=Math.max(8,st.roi.w*.10);
+  for(const p of peaks){
+    if(p.x<minX||p.x>maxX)continue;
+    const dist=Math.abs(p.x-target);
+    const score=p.score-dist/span*Math.max(1,p.score);
+    if(score>bestScore){bestScore=score;best=p}
+  }
+  return best;
+}
+
+function v4SnapTopColumnsFromXDerivative(){
+  if(!st.roi||!st.gray||!st.nodes||!st.measure)return false;
+  const minGap=Math.max(5,st.roi.w*.018);
+  const peaks=v4DerivativePeaks(minGap);
+  if(peaks.length<3)return false;
+  const old2=node(2).x,old8=node(8).x,old9=node(9).x;
+  const p2=v4NearestPeak(peaks,old2,st.roi.x,old8-minGap);
+  const p8=v4NearestPeak(peaks,old8,(p2?.x??old2)+minGap,old9-minGap);
+  const p9=v4NearestPeak(peaks,old9,(p8?.x??old8)+minGap,st.roi.x+st.roi.w);
+  if(!p2||!p8||!p9)return false;
+  if(!(p2.x<p8.x-minGap&&p8.x<p9.x-minGap))return false;
+  const setCol=(ids,x)=>{for(const id of ids){const p=node(id);if(p)p.x=clamp(x,st.roi.x,st.roi.x+st.roi.w)}};
+  setCol([2,3,4],p2.x);
+  setCol([8,7,6],p8.x);
+  setCol([9,10,11],p9.x);
+  node(5).x=(node(4).x+node(6).x)/2;
+  enforceLrrOrder(5);
+  st.v4LastDerivativeColumns={p2:p2.x,p8:p8.x,p9:p9.x,peaks:peaks.length};
+  return true;
+}
+
+const scanBeforeV4Derivative=scan;
+scan=function(){
+  scanBeforeV4Derivative();
+  const ok=v4SnapTopColumnsFromXDerivative();
+  if(ok){
+    updateMetrics();draw();drawProfile();drawV3ContourWindow();
+    $('hint').textContent=`Auto fit + X derivative: point 2/8/9 snapped to derivative peaks (${Math.round(node(2).x)}, ${Math.round(node(8).x)}, ${Math.round(node(9).x)} px).`;
+  }
+};
+$('scan').onclick=scan;
+
+function v4AspectRect(x,y,w,h,roi){
+  const aspect=Math.max(.05,Math.min(20,roi.w/Math.max(1,roi.h)));
+  let pw=w,ph=w/aspect;
+  if(ph>h){ph=h;pw=h*aspect}
+  return{x:x+(w-pw)/2,y:y+(h-ph)/2,w:pw,h:ph};
+}
+
+drawV4DotMap=function(c,x,y,w,h,title,orientation,r,stats,lineCount,pointCount){
+  c.save();
+  c.strokeStyle='#d7dde4';c.lineWidth=1;c.strokeRect(x,y,w,h);
+  c.fillStyle='#111';c.font='12px Segoe UI';c.fillText(title,x+6,y+14);
+  const box=v4AspectRect(x+14,y+26,w-28,h-42,r);
+  const left=box.x,top=box.y,plotW=box.w,plotH=box.h;
+  c.fillStyle='#f8fafc';c.fillRect(left,top,plotW,plotH);
+  c.strokeStyle='#edf1f5';c.lineWidth=1;
+  for(let g=1;g<4;g++){
+    const gx=left+plotW*g/4,gy=top+plotH*g/4;
+    c.beginPath();c.moveTo(gx,top);c.lineTo(gx,top+plotH);c.moveTo(left,gy);c.lineTo(left+plotW,gy);c.stroke();
+  }
+  c.strokeStyle='#cfd8e3';c.strokeRect(left+.5,top+.5,plotW-1,plotH-1);
+  const radius=Math.max(1.1,Math.min(3.0,plotW/pointCount*.30,plotH/lineCount*.42));
+  let breakCount=0;
+  for(let li=0;li<lineCount;li++){
+    const base=orientation==='Y'
+      ? left+(li+.5)/lineCount*plotW
+      : top+(li+.5)/lineCount*plotH;
+    const coord=orientation==='Y'
+      ? r.x+(li+.5)*r.w/lineCount
+      : r.y+(li+.5)*r.h/lineCount;
+    const series=orientation==='Y'?v4SeriesY(r,coord,pointCount,stats):v4SeriesX(r,coord,pointCount,stats);
+    const breaks=v4DerivativeBreaks(series);
+    breakCount+=breaks.size;
+    for(let pi=0;pi<series.length;pi++){
+      const p=series[pi],t=(p.v-stats.lo)/stats.span;
+      const px=orientation==='Y'
+        ? base+(t-.5)*Math.max(2,plotW/lineCount*.72)
+        : left+p.pos*plotW;
+      const py=orientation==='Y'
+        ? top+p.pos*plotH
+        : base-(t-.5)*Math.max(2,plotH/lineCount*.72);
+      c.beginPath();
+      c.fillStyle=v4Palette(t);
+      c.arc(px,py,radius,0,Math.PI*2);
+      c.fill();
+    }
+  }
+  c.fillStyle='#516070';c.font='11px Segoe UI';
+  c.fillText(`${lineCount} lines / ${pointCount} pts each / breaks ${breakCount}`,x+6,y+h-8);
+  c.restore();
+  return breakCount;
+};
+
+function v4XDerivativeProfile(){
+  const r=normalizedV3Roi();
+  if(!r||!st.measure)return null;
+  const yTop=clamp(Math.round((st.measure.wa??(r.y+r.h*.12))-r.y-r.h*.03),0,r.h-1);
+  const yMid=clamp(Math.round((st.measure.wc??(r.y+r.h*.50))-r.y+r.h*.08),0,r.h-1);
+  const from=Math.min(yTop,yMid),to=Math.max(yTop,yMid);
+  const avg=new Float32Array(r.w);
+  for(let x=0;x<r.w;x++){
+    let s=0,n=0;
+    for(let y=from;y<=to;y+=2){
+      s+=st.gray.d[(r.y+y)*st.gray.w+r.x+x];n++;
+    }
+    avg[x]=n?s/n:0;
+  }
+  const win=Math.max(2,Math.round(r.w*.006));
+  const smooth=new Float32Array(r.w);
+  for(let x=0;x<r.w;x++){
+    let s=0,n=0;
+    for(let k=-win;k<=win;k++){
+      const i=x+k;
+      if(i>=0&&i<r.w){s+=avg[i];n++}
+    }
+    smooth[x]=n?s/n:avg[x];
+  }
+  const deriv=new Float32Array(r.w);
+  for(let x=1;x<r.w-1;x++)deriv[x]=(smooth[x+1]-smooth[x-1])/2;
+  return{r,avg:smooth,deriv,from:r.y+from,to:r.y+to};
+}
+
+function v4SignedDerivativePeaks(minGapPx){
+  const data=v4XDerivativeProfile();
+  if(!data)return [];
+  const {r,deriv}=data;
+  const raw=[];
+  for(let x=2;x<r.w-2;x++){
+    const a=Math.abs(deriv[x]);
+    if(a>=Math.abs(deriv[x-1])&&a>=Math.abs(deriv[x+1])){
+      raw.push({x:r.x+x,score:a,dir:deriv[x]>=0?'rise':'fall'});
+    }
+  }
+  raw.sort((a,b)=>b.score-a.score);
+  const chosen=[];
+  for(const p of raw){
+    if(chosen.every(q=>Math.abs(q.x-p.x)>=minGapPx))chosen.push(p);
+    if(chosen.length>=28)break;
+  }
+  return chosen.sort((a,b)=>a.x-b.x);
+}
+
+function v4PickDerivativeTriple(peaks){
+  if(!st.nodes||peaks.length<3)return null;
+  const old=[node(2).x,node(8).x,node(9).x];
+  const oldGap1=Math.max(5,old[1]-old[0]),oldGap2=Math.max(5,old[2]-old[1]);
+  const minGap=Math.max(5,st.roi.w*.018);
+  let best=null,bestScore=-Infinity;
+  for(let i=0;i<peaks.length-2;i++){
+    for(let j=i+1;j<peaks.length-1;j++){
+      for(let k=j+1;k<peaks.length;k++){
+        const a=peaks[i],b=peaks[j],c=peaks[k];
+        const g1=b.x-a.x,g2=c.x-b.x;
+        if(g1<minGap||g2<minGap)continue;
+        const alternating=(a.dir!==b.dir&&b.dir!==c.dir);
+        if(!alternating)continue;
+        if(g1>st.roi.w*.55||g2>st.roi.w*.55)continue;
+        const strength=a.score+b.score+c.score;
+        const distPenalty=(Math.abs(a.x-old[0])+Math.abs(b.x-old[1])+Math.abs(c.x-old[2]))/(st.roi.w||1);
+        const shapePenalty=(Math.abs(g1-oldGap1)+Math.abs(g2-oldGap2))/(st.roi.w||1);
+        const score=strength*(1.25-(distPenalty*.18+shapePenalty*.30));
+        if(score>bestScore){bestScore=score;best={p2:a,p8:b,p9:c,g1,g2,pattern:`${a.dir}-${b.dir}-${c.dir}`}}
+      }
+    }
+  }
+  return best;
+}
+
+v4SnapTopColumnsFromXDerivative=function(){
+  if(!st.roi||!st.gray||!st.nodes||!st.measure)return false;
+  const minGap=Math.max(5,st.roi.w*.018);
+  const peaks=v4SignedDerivativePeaks(minGap);
+  const triple=v4PickDerivativeTriple(peaks);
+  if(!triple)return false;
+  const {p2,p8,p9}=triple;
+  if(!(p2.x<p8.x-minGap&&p8.x<p9.x-minGap))return false;
+  const setCol=(ids,x)=>{for(const id of ids){const p=node(id);if(p)p.x=clamp(x,st.roi.x,st.roi.x+st.roi.w)}};
+  setCol([2,3,4],p2.x);
+  setCol([8,7,6],p8.x);
+  setCol([9,10,11],p9.x);
+  node(5).x=(node(4).x+node(6).x)/2;
+  enforceLrrOrder(5);
+  st.v4LastDerivativeColumns={p2:p2.x,p8:p8.x,p9:p9.x,peaks:peaks.length,pattern:triple.pattern};
+  return true;
+};
+
+const v4XOnlyStyle=document.createElement('style');
+v4XOnlyStyle.textContent=`
+  #v3ContourWin{width:170px!important}
+  #v3ContourCanvas{height:340px!important}
+`;
+document.head.appendChild(v4XOnlyStyle);
+
+drawV3ContourWindow=function(){
+  installV3ContourWindow();
+  const win=$('v3ContourWin'),can=$('v3ContourCanvas');
+  if(!st.roi||!st.gray){if(win)win.style.display='none';return}
+  win.style.display='block';
+  const title=$('v3ContourTitle');
+  if(title)title.querySelector('span').textContent='ROI X derivative dots V4';
+  positionV3ContourWindow();
+  const r=normalizedV3Roi();if(!r)return;
+  const cssW=can.clientWidth||340,cssH=can.clientHeight||680;
+  can.width=Math.max(1,Math.round(cssW*devicePixelRatio));
+  can.height=Math.max(1,Math.round(cssH*devicePixelRatio));
+  const c=can.getContext('2d');
+  c.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  c.clearRect(0,0,cssW,cssH);
+  c.fillStyle='#fff';c.fillRect(0,0,cssW,cssH);
+  const stats=v4Stats(r);
+  const pad=16;
+  const xLines=clamp(Math.round(50*r.h/Math.max(1,r.w)),10,120);
+  const pointX=clamp(Math.round(r.w),80,260);
+  const breaks=drawV4DotMap(c,pad,22,cssW-pad*2,cssH-58,'X direction derivative dots','X',r,stats,xLines,pointX);
+  const gradW=Math.min(180,cssW-pad*2),gradX=pad,gradY=cssH-21;
+  for(let i=0;i<gradW;i++){c.fillStyle=v4Palette(i/(gradW-1));c.fillRect(gradX+i,gradY,1,8)}
+  c.strokeStyle='#111';c.strokeRect(gradX+.5,gradY+.5,gradW-1,7);
+  c.fillStyle='#516070';c.font='11px Segoe UI';
+  c.fillText(`low ${fmt(stats.lo,1)}`,gradX,gradY-4);
+  c.fillText(`high ${fmt(stats.hi,1)}`,gradX+gradW-48,gradY-4);
+  $('v3ContourInfo').textContent=`X direction only. Canvas ratio 1:2. ${xLines} X-profile lines, derivative breaks counted in background: ${breaks}.`;
+};
+
+function v4BottomCandidateAtX(x){
+  if(!st.roi||!st.gray||!st.measure)return null;
+  const p=verticalProfileAtX(x);
+  if(!p||p.v.length<8)return null;
+  const startY=Math.max(
+    st.measure.wc??(st.roi.y+st.roi.h*.45),
+    st.measure.wa+st.roi.h*.28
+  );
+  const endY=st.roi.y+st.roi.h*.985;
+  const a=clamp(Math.round(startY-p.y0),2,p.v.length-3);
+  const b=clamp(Math.round(endY-p.y0),2,p.v.length-3);
+  let bestY=null,bestScore=-Infinity;
+  for(let i=a;i<=b;i++){
+    const d=Math.abs(p.v[i+1]-p.v[i-1]);
+    const y=p.y0+i;
+    const frac=(y-st.roi.y)/Math.max(1,st.roi.h);
+    const bottomBias=1+Math.max(0,frac-.58)*.45;
+    const roiEndPenalty=frac>.96?.55:1;
+    const score=d*bottomBias*roiEndPenalty;
+    if(score>bestScore){bestScore=score;bestY=y}
+  }
+  return bestY==null?null:{y:bestY,score:bestScore,x};
+}
+
+function v4SnapWBToTrenchBottom(){
+  if(!st.roi||!st.gray||!st.nodes||!st.measure)return false;
+  const xs=[];
+  const add=x=>{
+    if(Number.isFinite(x))xs.push(clamp(x,st.roi.x,st.roi.x+st.roi.w));
+  };
+  add((node(1).x+node(2).x)/2);
+  add((node(2).x+node(8).x)/2);
+  add((node(8).x+node(9).x)/2);
+  add((node(4).x+node(6).x)/2);
+  add((node(6).x+node(11).x)/2);
+  const candidates=xs.map(v4BottomCandidateAtX).filter(Boolean);
+  if(!candidates.length)return false;
+  candidates.sort((a,b)=>b.score-a.score);
+  const top=candidates.slice(0,Math.min(3,candidates.length)).map(c=>c.y).sort((a,b)=>a-b);
+  const y=top[Math.floor(top.length/2)];
+  st.measure.wb=clamp(y,st.measure.wa+st.roi.h*.35,st.roi.y+st.roi.h*.985);
+  st.measure.wc=st.measure.wa+(st.measure.wb-st.measure.wa)*.5;
+  syncY();
+  node(5).x=(node(4).x+node(6).x)/2;
+  enforceLrrOrder(5);
+  st.v4LastWB={y:st.measure.wb,candidates:candidates.length};
+  return true;
+}
+
+const scanBeforeV4Bottom=scan;
+scan=function(){
+  scanBeforeV4Bottom();
+  const wbOk=v4SnapWBToTrenchBottom();
+  if(wbOk){
+    updateMetrics();draw();drawProfile();drawV3ContourWindow();
+    $('hint').textContent=`Auto fit: WA kept, WB snapped to trench bottom (${Math.round(st.measure.wb)} px).`;
+  }
+};
+$('scan').onclick=scan;
+
+function v4GreenYellowThreshold(){
+  const r=normalizedV3Roi();
+  if(!r)return null;
+  const stats=v4Stats(r);
+  return{r,stats,thr:stats.lo+stats.span*.5};
+}
+
+function v4ThresholdEdges(series,base,step,thr,minGap){
+  const raw=[];
+  for(let i=1;i<series.length-2;i++){
+    const a=series[i]-thr,b=series[i+1]-thr;
+    if((a<=0&&b>=0)||(a>=0&&b<=0)){
+      const denom=series[i+1]-series[i];
+      const t=Math.abs(denom)>1e-6?(thr-series[i])/denom:.5;
+      const pos=base+(i+clamp(t,0,1))*step;
+      const slope=(series[i+1]-series[i-1])/(Math.abs(step)||1);
+      raw.push({pos,score:Math.abs(slope),dir:slope>=0?'rise':'fall'});
+    }
+  }
+  raw.sort((a,b)=>b.score-a.score);
+  const chosen=[];
+  for(const e of raw){
+    if(chosen.every(q=>Math.abs(q.pos-e.pos)>=minGap))chosen.push(e);
+    if(chosen.length>=18)break;
+  }
+  return chosen.sort((a,b)=>a.pos-b.pos);
+}
+
+function v4XGreenYellowEdges(y){
+  const gy=v4GreenYellowThreshold();
+  const p=profileAt(y);
+  if(!gy||!p)return [];
+  const minGap=Math.max(5,st.roi.w*.018);
+  return v4ThresholdEdges(Array.from(p.v),p.x0,1,gy.thr,minGap).map(e=>({x:e.pos,score:e.score,dir:e.dir}));
+}
+
+function v4YGreenYellowEdges(x){
+  const gy=v4GreenYellowThreshold();
+  const p=verticalProfileAtX(x);
+  if(!gy||!p)return [];
+  const minGap=Math.max(5,st.roi.h*.018);
+  return v4ThresholdEdges(Array.from(p.v),p.y0,1,gy.thr,minGap).map(e=>({y:e.pos,score:e.score,dir:e.dir,x}));
+}
+
+function v4PickLrrGreenYellow(edges){
+  if(!st.nodes||edges.length<3)return null;
+  const old=[node(2).x,node(8).x,node(9).x];
+  const minGap=Math.max(5,st.roi.w*.018);
+  const want=['fall','rise','fall'];
+  let best=null,bestScore=-Infinity;
+  for(let i=0;i<edges.length-2;i++){
+    for(let j=i+1;j<edges.length-1;j++){
+      for(let k=j+1;k<edges.length;k++){
+        const a=edges[i],b=edges[j],c=edges[k];
+        const g1=b.x-a.x,g2=c.x-b.x;
+        if(g1<minGap||g2<minGap)continue;
+        if(g1>st.roi.w*.58||g2>st.roi.w*.58)continue;
+        const pattern=[a.dir,b.dir,c.dir];
+        const exact=pattern.every((d,idx)=>d===want[idx]);
+        const alternating=(a.dir!==b.dir&&b.dir!==c.dir);
+        if(!exact&&!alternating)continue;
+        const strength=a.score+b.score+c.score;
+        const oldPenalty=(Math.abs(a.x-old[0])+Math.abs(b.x-old[1])+Math.abs(c.x-old[2]))/Math.max(1,st.roi.w);
+        const dirBonus=exact?1.35:1.0;
+        const score=strength*dirBonus-oldPenalty*strength*.22;
+        if(score>bestScore){bestScore=score;best={L:a,R1:b,R2:c,pattern:pattern.join('-')}}
+      }
+    }
+  }
+  return best;
+}
+
+function v4Median(values){
+  const v=values.filter(Number.isFinite).sort((a,b)=>a-b);
+  return v.length?v[Math.floor(v.length/2)]:null;
+}
+
+function v4PickTopBottomRowsFromGreenYellow(){
+  if(!st.roi||!st.nodes||!st.measure)return null;
+  const xs=[
+    (node(1).x+node(2).x)/2,
+    (node(2).x+node(8).x)/2,
+    (node(8).x+node(9).x)/2,
+    (node(4).x+node(6).x)/2,
+    (node(6).x+node(11).x)/2
+  ].filter(Number.isFinite);
+  const topCandidates=[],bottomCandidates=[];
+  for(const x of xs){
+    const edges=v4YGreenYellowEdges(x);
+    if(!edges.length)continue;
+    const upper=edges
+      .filter(e=>e.y>=st.roi.y+st.roi.h*.02&&e.y<=st.roi.y+st.roi.h*.42)
+      .sort((a,b)=>(Math.abs(a.y-st.measure.wa)-Math.abs(b.y-st.measure.wa))||b.score-a.score)[0];
+    const lower=edges
+      .filter(e=>e.y>=st.roi.y+st.roi.h*.48&&e.y<=st.roi.y+st.roi.h*.985)
+      .sort((a,b)=>(Math.abs(a.y-st.measure.wb)-Math.abs(b.y-st.measure.wb))||b.score-a.score)[0];
+    if(upper)topCandidates.push(upper.y);
+    if(lower)bottomCandidates.push(lower.y);
+  }
+  const wa=v4Median(topCandidates);
+  const wb=v4Median(bottomCandidates);
+  if(!Number.isFinite(wa)||!Number.isFinite(wb)||wb<=wa+Math.max(8,st.roi.h*.20))return null;
+  return{wa,wb};
+}
+
+function v4ApplyGreenYellowSnap(){
+  if(!st.roi||!st.gray||!st.nodes||!st.measure)return false;
+  const rows=v4PickTopBottomRowsFromGreenYellow();
+  if(rows){
+    st.measure.wa=clamp(rows.wa,st.roi.y,st.roi.y+st.roi.h);
+    st.measure.wb=clamp(rows.wb,st.measure.wa+Math.max(8,st.roi.h*.20),st.roi.y+st.roi.h);
+    st.measure.wc=st.measure.wa+(st.measure.wb-st.measure.wa)*.5;
+    syncY();
+  }
+  const wcEdges=v4XGreenYellowEdges(st.measure.wc);
+  const triple=v4PickLrrGreenYellow(wcEdges);
+  if(!triple)return !!rows;
+  const minGap=5;
+  const L=triple.L.x,R1=triple.R1.x,R2=triple.R2.x;
+  if(!(L+minGap<=R1&&R1+minGap<=R2))return !!rows;
+  for(const id of [2,3,4])node(id).x=L;
+  for(const id of [8,7,6])node(id).x=R1;
+  for(const id of [9,10,11])node(id).x=R2;
+  const leftEdge=wcEdges.filter(e=>e.x<L-minGap).sort((a,b)=>Math.abs(b.x-L)-Math.abs(a.x-L)).pop();
+  if(leftEdge){
+    node(1).x=leftEdge.x;
+    if(node(12))node(12).x=leftEdge.x;
+  }else{
+    const fallback=clamp(L-(R1-L),st.roi.x,L-minGap);
+    node(1).x=fallback;
+    if(node(12))node(12).x=fallback;
+  }
+  node(5).x=(node(4).x+node(6).x)/2;
+  syncY();
+  enforceLrrOrder(5);
+  st.v4GreenYellowSnap={threshold:v4GreenYellowThreshold()?.thr,L,R1,R2,pattern:triple.pattern,rows:!!rows};
+  return true;
+}
+
+const scanBeforeV4GreenYellow=scan;
+scan=function(){
+  scanBeforeV4GreenYellow();
+  const ok=v4ApplyGreenYellowSnap();
+  if(ok){
+    updateMetrics();draw();drawProfile();drawV3ContourWindow();
+    const g=st.v4GreenYellowSnap;
+    $('hint').textContent=g
+      ? `Auto fit: green/yellow derivative-map interfaces set WA/WB and L/R1/R2 (${Math.round(g.L)}, ${Math.round(g.R1)}, ${Math.round(g.R2)} px).`
+      : 'Auto fit: green/yellow derivative-map interfaces set WA/WB.';
+  }
+};
+$('scan').onclick=scan;
+
+function scaleDisplayedUm(){
+  const um=parseFloat($('calum')?.value);
+  return Number.isFinite(um)&&um>0?um:null;
+}
+
+function scaleDisplayedPx(){
+  const px=parseFloat($('calpx')?.value);
+  return Number.isFinite(px)&&px>0?px:null;
+}
+
+function scaleManualPx(){
+  const el=$('calpx');
+  if(!el||el.dataset.auto==='1')return null;
+  return scaleDisplayedPx();
+}
+
+function scaleMeasuredPx(){
+  if(!st.cal)return null;
+  const px=Math.hypot(st.cal.x2-st.cal.x1,st.cal.y2-st.cal.y1);
+  return Number.isFinite(px)&&px>0?px:null;
+}
+
+function scaleEffectivePx(){
+  return scaleManualPx()||scaleMeasuredPx()||scaleDisplayedPx();
+}
+
+function applyDisplayedScale(){
+  const um=scaleDisplayedUm();
+  const px=scaleEffectivePx();
+  st.umPerPx=um&&px?um/px:null;
+  updateScaleInfo();
+  updateMetrics();
+}
+
+function refreshDisplayedScaleOnly(){
+  const um=scaleDisplayedUm();
+  const px=scaleEffectivePx();
+  st.umPerPx=um&&px?um/px:null;
+  updateScaleInfo();
+}
+
+updateScaleInfo=function(){
+  const info=$('scaleInfo');if(!info)return;
+  const um=scaleDisplayedUm();
+  const calpx=$('calpx');
+  const manualPx=scaleManualPx();
+  const measuredPx=scaleMeasuredPx();
+  const px=manualPx||measuredPx||scaleDisplayedPx();
+  if(!um||!px){
+    info.textContent=`${um?fmt(um,3):'--'}um = --px`;
+    return;
+  }
+  info.textContent=`${fmt(um,3)}um = ${fmt(px,1)}px`;
+  if(calpx&&document.activeElement!==calpx&&!manualPx&&measuredPx){
+    calpx.value=fmt(measuredPx,1);
+    calpx.dataset.auto='1';
+  }
+};
+
+updateCal=function(){
+  applyDisplayedScale();
+};
+
+if($('calpx')){
+  $('calpx').oninput=()=>{
+    $('calpx').dataset.auto='0';
+    applyDisplayedScale();
+    draw();drawProfile();
+  };
+}
+
+if($('calum')){
+  $('calum').oninput=()=>{
+    applyDisplayedScale();
+    draw();drawProfile();
+  };
+}
+
+const fileChangeBeforeScale=$('file').onchange;
+$('file').onchange=e=>{
+  fileChangeBeforeScale(e);
+  setTimeout(applyDisplayedScale,120);
+  setTimeout(applyDisplayedScale,500);
+};
+
+applyDisplayedScale();
+
+const metricsBeforeDisplayedScale=metrics;
+metrics=function(){
+  refreshDisplayedScaleOnly();
+  return metricsBeforeDisplayedScale();
+};
+
+if(typeof manualLen==='function'){
+  const manualLenBeforeDisplayedScale=manualLen;
+  manualLen=function(d){
+    refreshDisplayedScaleOnly();
+    return manualLenBeforeDisplayedScale(d);
+  };
+}
+
+const v5VisualStyle=document.createElement('style');
+v5VisualStyle.textContent=`
+  :root{
+    --v5-bg:#1b1c23;
+    --v5-panel:#252733;
+    --v5-panel2:#1f212b;
+    --v5-border:#3b3e4c;
+    --v5-line:#4a4d5c;
+    --v5-text:#eef2f7;
+    --v5-muted:#a5adba;
+    --v5-accent:#00b8c4;
+    --v5-accent2:#1f8fff;
+    --v5-green:#00a878;
+    --v5-pink:#f6b6e4;
+    --v5-danger:#e65d5d;
+  }
+  body{
+    background:var(--v5-bg)!important;
+    color:var(--v5-text)!important;
+    font-size:13px!important;
+  }
+  .app{
+    grid-template-rows:56px 1fr!important;
+    background:var(--v5-bg)!important;
+  }
+  header{
+    min-height:56px!important;
+    background:linear-gradient(180deg,#2a2d39 0%,#222530 100%)!important;
+    border-bottom:1px solid var(--v5-border)!important;
+    box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 8px 24px rgba(0,0,0,.18)!important;
+    color:var(--v5-text)!important;
+    gap:10px!important;
+    padding:8px 12px!important;
+  }
+  h1{
+    color:var(--v5-accent)!important;
+    font-weight:800!important;
+    letter-spacing:.3px!important;
+    font-size:17px!important;
+    min-width:88px!important;
+  }
+  h1::after{
+    content:' measurement suite';
+    display:block;
+    color:var(--v5-muted);
+    font-size:9px;
+    font-weight:600;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+    margin-top:1px;
+  }
+  .grp{
+    border-right:1px solid var(--v5-line)!important;
+    gap:7px!important;
+    padding-right:10px!important;
+  }
+  .grp span{
+    color:var(--v5-muted)!important;
+    font-size:12px!important;
+  }
+  button,.filebtn,input,select{
+    height:32px!important;
+    border-radius:5px!important;
+    border:1px solid var(--v5-border)!important;
+    font-size:12px!important;
+    box-shadow:none!important;
+  }
+  button,.filebtn{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    background:var(--v5-accent)!important;
+    color:#061114!important;
+    border-color:rgba(0,184,196,.8)!important;
+    font-weight:700!important;
+    padding:0 11px!important;
+    cursor:pointer!important;
+  }
+  button:hover,.filebtn:hover{
+    filter:brightness(1.08)!important;
+  }
+  button.dark,#fit{
+    background:#3a3f50!important;
+    border-color:#4b5164!important;
+    color:var(--v5-text)!important;
+  }
+  #roi,#cal{
+    background:var(--v5-accent2)!important;
+    color:#fff!important;
+    border-color:#2479c9!important;
+  }
+  #scan,.green,#ml{
+    background:var(--v5-green)!important;
+    color:#fff!important;
+    border-color:#008e66!important;
+  }
+  #manualX,#manualY{
+    background:var(--v5-pink)!important;
+    color:#4d163d!important;
+    border-color:#d985be!important;
+  }
+  #save,#csv,#screen{
+    background:#f8fafc!important;
+    color:#151922!important;
+    border-color:#cbd5e1!important;
+  }
+  input,select{
+    background:#181a22!important;
+    color:var(--v5-text)!important;
+    border-color:var(--v5-border)!important;
+    padding:0 8px!important;
+  }
+  input:focus,select:focus{
+    outline:1px solid var(--v5-accent)!important;
+    border-color:var(--v5-accent)!important;
+  }
+  #calum,#calpx,#rot{
+    width:52px!important;
+    min-width:52px!important;
+  }
+  #csvname{
+    width:116px!important;
+    min-width:116px!important;
+  }
+  #scaleInfo{
+    color:#dbeafe!important;
+    font-size:12px!important;
+  }
+  main{
+    background:#11141a!important;
+    grid-template-rows:1fr 190px!important;
+  }
+  #stage{
+    background:#101318!important;
+    border-right:1px solid #171b23!important;
+  }
+  #canvas{
+    background:#0f1218!important;
+    outline:1px solid #4a5568!important;
+    outline-offset:-1px!important;
+  }
+  #hint{
+    background:rgba(10,13,18,.82)!important;
+    color:#e2e8f0!important;
+    border:1px solid rgba(148,163,184,.22)!important;
+    border-radius:5px!important;
+    font-size:12px!important;
+    box-shadow:0 8px 24px rgba(0,0,0,.28)!important;
+  }
+  aside{
+    background:var(--v5-panel)!important;
+    color:var(--v5-text)!important;
+    border-left:1px solid var(--v5-border)!important;
+    padding:12px!important;
+  }
+  .sec{
+    background:var(--v5-panel2)!important;
+    border:1px solid var(--v5-border)!important;
+    border-radius:6px!important;
+    padding:11px!important;
+    margin-bottom:12px!important;
+    box-shadow:0 8px 18px rgba(0,0,0,.14)!important;
+  }
+  .sec h2{
+    color:var(--v5-accent)!important;
+    font-size:11px!important;
+    text-transform:uppercase!important;
+    letter-spacing:.45px!important;
+    padding-bottom:6px!important;
+    margin-bottom:9px!important;
+    border-bottom:1px solid var(--v5-border)!important;
+  }
+  .small,.row label{
+    color:var(--v5-muted)!important;
+  }
+  .row{
+    color:var(--v5-text)!important;
+    grid-template-columns:112px 1fr!important;
+  }
+  #metrics{
+    color:#dfe7f1!important;
+    line-height:1.62!important;
+  }
+  .badge{
+    background:rgba(0,184,196,.13)!important;
+    color:#80f6ff!important;
+    border:1px solid rgba(0,184,196,.22)!important;
+  }
+  table{
+    color:#dce4ef!important;
+    font-size:11px!important;
+  }
+  th{
+    background:#1a1d26!important;
+    color:#aeb7c5!important;
+    border-bottom:1px solid var(--v5-border)!important;
+  }
+  td{
+    border-bottom:1px solid #343844!important;
+  }
+  tbody tr:nth-child(even){
+    background:#292d39!important;
+  }
+  .profile{
+    background:#20242d!important;
+    border-top:1px solid var(--v5-border)!important;
+  }
+  #profile,#pinfo{
+    border:1px solid var(--v5-border)!important;
+    border-radius:6px!important;
+    box-shadow:0 6px 18px rgba(0,0,0,.14)!important;
+  }
+  #pinfo{
+    background:#f8fafc!important;
+    color:#17212b!important;
+  }
+  #yProfilePanel{
+    background:#20242d!important;
+    border-right:1px solid var(--v5-border)!important;
+  }
+  #yProfilePanel .ypair{
+    border-color:#51586a!important;
+    border-radius:5px!important;
+    overflow:hidden!important;
+  }
+  #yProfilePanel .ypairTitle{
+    background:#272b36!important;
+    color:#dbeafe!important;
+  }
+  #sideToggle{
+    background:#293040!important;
+    color:#dce7f5!important;
+    border:1px solid var(--v5-border)!important;
+    border-radius:5px!important;
+  }
+  #v3ContourWin{
+    border:1px solid #6b7280!important;
+    background:#f8fafc!important;
+    box-shadow:0 18px 46px rgba(0,0,0,.34)!important;
+    border-radius:7px!important;
+  }
+  #v3ContourTitle{
+    background:#263140!important;
+    color:#eaf3ff!important;
+  }
+  #v3ContourTitle span:last-child{
+    color:#7dd3fc!important;
+  }
+`;
+document.head.appendChild(v5VisualStyle);
+
+document.title='Trench Measurer V5';
+$('file')?.parentElement?.setAttribute('title','Open image');
+if(document.querySelector('h1'))document.querySelector('h1').textContent='Trench V5';
+if($('csvname')&&/^trenchV2/i.test($('csvname').value))$('csvname').value='trenchV5.csv';
+
+const fileChangeBeforeV5Name=$('file').onchange;
+$('file').onchange=e=>{
+  fileChangeBeforeV5Name(e);
+  setTimeout(()=>{
+    if($('csvname')&&st.name)$('csvname').value=fileBaseName(st.name)+'_trenchv5.csv';
+  },650);
+};
+
+/* V6: stable operation helpers appended without moving the V5 layout. */
+const v6Style=document.createElement('style');
+v6Style.textContent=`
+  .rowDel{
+    height:22px;
+    padding:0 7px;
+    border:1px solid #ef4444;
+    border-radius:5px;
+    background:#fff1f2;
+    color:#b91c1c;
+    cursor:pointer;
+    font-size:11px;
+    line-height:20px;
+  }
+  .rowDel:hover{background:#fecdd3}
+  .v6KeyHint{
+    display:inline-block;
+    margin-top:6px;
+    color:#334155;
+    font-size:12px;
+    line-height:1.55;
+  }
+`;
+document.head.appendChild(v6Style);
+
+document.title='Trench Measurer V6';
+if(document.querySelector('h1'))document.querySelector('h1').textContent='Trench V6';
+if($('csvname')&&/^trenchV5/i.test($('csvname').value))$('csvname').value='trenchV6.csv';
+const fileChangeBeforeV6Name=$('file').onchange;
+$('file').onchange=e=>{
+  fileChangeBeforeV6Name(e);
+  setTimeout(()=>{
+    if($('csvname')&&st.name)$('csvname').value=fileBaseName(st.name)+'_trenchv6.csv';
+  },750);
+};
+
+function median3ArrayV6(values){
+  if(!values||values.length<3)return values;
+  const out=new Float32Array(values.length);
+  out[0]=values[0];
+  out[values.length-1]=values[values.length-1];
+  for(let i=1;i<values.length-1;i++){
+    const a=values[i-1],b=values[i],c=values[i+1];
+    out[i]=a>b?(b>c?b:(a>c?c:a)):(a>c?a:(b>c?c:b));
+  }
+  return out;
+}
+function medianProfileResultV6(profile){
+  if(!profile||!profile.v)return profile;
+  const filtered=median3ArrayV6(profile.v);
+  if(filtered===profile.v)return profile;
+  return {...profile,v:filtered};
+}
+const profileAtBeforeV6Median=profileAt;
+profileAt=function(y){
+  return medianProfileResultV6(profileAtBeforeV6Median(y));
+};
+const verticalProfileAtXBeforeV6Median=verticalProfileAtX;
+verticalProfileAtX=function(x){
+  return medianProfileResultV6(verticalProfileAtXBeforeV6Median(x));
+};
+
+const drawSegmentsBeforeV6Selection=drawSegments;
+drawSegments=function(){
+  drawSegmentsBeforeV6Selection();
+  if(!st.nodes||!st.selectedNodeId)return;
+  const p=node(st.selectedNodeId);
+  if(!p)return;
+  const s=i2s(p.x,p.y);
+  ctx.save();
+  ctx.strokeStyle='#ffd84d';
+  ctx.lineWidth=3;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  ctx.arc(s.x,s.y,13,0,Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+};
+
+const canvasMouseDownBeforeV6Selection=canvas.onmousedown;
+canvas.onmousedown=e=>{
+  if(st.img&&e.button!==2){
+    const m=mouse(e);
+    const hit=hitTest(m);
+    st.selectedNodeId=(hit&&hit.type==='node')?hit.id:null;
+    draw();
+  }
+  if(canvasMouseDownBeforeV6Selection)canvasMouseDownBeforeV6Selection(e);
+};
+
+function moveSelectedNodeV6(dx,dy){
+  if(!st.nodes||!st.selectedNodeId)return false;
+  const p=node(st.selectedNodeId);
+  if(!p)return false;
+  dragNode(p.id,p.x+dx,p.y+dy);
+  updateMetrics();
+  draw();
+  drawProfile();
+  return true;
+}
+window.addEventListener('keydown',e=>{
+  const active=document.activeElement;
+  const tag=(active&&active.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(active&&active.isContentEditable))return;
+  if(e.key==='s'||e.key==='S'){
+    $('save')?.click();
+    e.preventDefault();
+    return;
+  }
+  if(e.key==='z'||e.key==='Z'){
+    $('undo')?.click();
+    e.preventDefault();
+    return;
+  }
+  const step=e.shiftKey?5:1;
+  const moves={
+    ArrowLeft:[-step,0],
+    ArrowRight:[step,0],
+    ArrowUp:[0,-step],
+    ArrowDown:[0,step]
+  };
+  if(moves[e.key]&&moveSelectedNodeV6(moves[e.key][0],moves[e.key][1])){
+    e.preventDefault();
+  }
+});
+
+function deleteRowV6(index){
+  if(index<0||index>=st.rows.length)return;
+  st.rows.splice(index,1);
+  st.rows.forEach((row,i)=>row.id=i+1);
+  renderRows();
+}
+window.deleteRow=deleteRowV6;
+renderRows=function(){
+  const table=$('tbl');
+  const head=table.querySelector('thead tr');
+  head.innerHTML='<th>ID</th><th>Pitch</th><th>Htr</th><th>WA</th><th>WC</th><th>WB</th><th>Hox</th><th>Hc</th><th>aL</th><th>bL</th><th>aR</th><th>bR</th><th>X1</th><th>X2</th><th>X3</th><th>Y1</th><th>Y2</th><th>Y3</th><th>Action</th>';
+  const tb=table.querySelector('tbody');
+  tb.innerHTML='';
+  st.rows.forEach((m,index)=>{
+    m.id=index+1;
+    const tr=document.createElement('tr');
+    tr.title='Double-click to delete this row';
+    tr.ondblclick=()=>deleteRowV6(index);
+    tr.innerHTML=`<td>${m.id}</td><td>${fmt(m.pitch)}</td><td>${fmt(m.htr??m.trenchHeight??m.height)}</td><td>${fmt(m.wa)}</td><td>${fmt(m.wc)}</td><td>${fmt(m.wb)}</td><td>${fmt(m.hox)}</td><td>${fmt(m.hc)}</td><td>${fmt(m.alphaL,2)}</td><td>${fmt(m.betaL,2)}</td><td>${fmt(m.alphaR,2)}</td><td>${fmt(m.betaR,2)}</td><td>${fmt(m.X1)}</td><td>${fmt(m.X2)}</td><td>${fmt(m.X3)}</td><td>${fmt(m.Y1)}</td><td>${fmt(m.Y2)}</td><td>${fmt(m.Y3)}</td><td><button class="rowDel" type="button" data-row="${index}">Del</button></td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('.rowDel').forEach(btn=>{
+    btn.onclick=e=>{
+      e.stopPropagation();
+      deleteRowV6(Number(btn.dataset.row));
+    };
+  });
+};
+
+function appendShortcutHintV6(){
+  const p=$('pinfo');
+  if(!p||p.dataset.v6Hint)return;
+  p.dataset.v6Hint='1';
+  p.insertAdjacentHTML('beforeend','<br><span class="v6KeyHint">快捷键: 点击蓝色点后，方向键微调 1 px，Shift+方向键 5 px。S 保存 Result，Z Undo。Rows 可双击删除或按 Del。</span>');
+}
+const drawProfileBeforeV6Hint=drawProfile;
+drawProfile=function(){
+  drawProfileBeforeV6Hint();
+  appendShortcutHintV6();
+};
+setTimeout(appendShortcutHintV6,300);
+
+/* V7: first-derivative Auto fit with learned manual offset memory. */
+const V7_ML_KEY='trenchV7DerivativeLearning';
+document.title='Trench Measurer V7';
+if(document.querySelector('h1'))document.querySelector('h1').textContent='Trench V7';
+if($('csvname')&&/^trenchV6/i.test($('csvname').value))$('csvname').value='trenchV7.csv';
+
+const fileChangeBeforeV7Name=$('file').onchange;
+$('file').onchange=e=>{
+  fileChangeBeforeV7Name(e);
+  setTimeout(()=>{
+    if($('csvname')&&st.name)$('csvname').value=fileBaseName(st.name)+'_trenchv7.csv';
+    updateV7MlButton();
+  },850);
+};
+
+function v7LoadModel(){
+  try{
+    const raw=localStorage.getItem(V7_ML_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      if(parsed&&Array.isArray(parsed.samples))return parsed;
+    }
+  }catch(_){}
+  return{version:7,samples:[],avgOffsets:{},counts:{}};
+}
+
+function v7Median(values){
+  const v=values.filter(Number.isFinite).sort((a,b)=>a-b);
+  if(!v.length)return 0;
+  const m=Math.floor(v.length/2);
+  return v.length%2?v[m]:(v[m-1]+v[m])/2;
+}
+
+function v7TrainModel(model){
+  const byId={};
+  for(const sample of model.samples||[]){
+    for(const item of sample.items||[]){
+      const key=String(item.id);
+      (byId[key]||(byId[key]=[])).push(item.offset);
+    }
+  }
+  model.avgOffsets={};
+  model.counts={};
+  for(const key of Object.keys(byId)){
+    model.avgOffsets[key]=v7Median(byId[key]);
+    model.counts[key]=byId[key].length;
+  }
+  return model;
+}
+
+function v7SaveModel(model){
+  v7TrainModel(model);
+  localStorage.setItem(V7_ML_KEY,JSON.stringify(model));
+  st.v7MlModel=model;
+  updateV7MlButton();
+}
+
+function v7Offset(model,id){
+  const v=model?.avgOffsets?.[String(id)];
+  return Number.isFinite(v)?v:0;
+}
+
+function v7Dir(id){
+  if([1,12,8,7,6].includes(Number(id)))return'rise';
+  return'fall';
+}
+
+function v7RowY(row){
+  if(!st.measure)return null;
+  if(row==='WA')return st.measure.wa;
+  if(row==='WC')return st.measure.wc;
+  if(row==='WB')return st.measure.wb;
+  return null;
+}
+
+function v7RowForId(id){
+  id=Number(id);
+  if([1,2,8,9].includes(id))return'WA';
+  if([3,7,10].includes(id))return'WC';
+  if([4,6,11,12].includes(id))return'WB';
+  return null;
+}
+
+function v7ProfilePeaks(prof,dir,minGap){
+  if(!prof||!prof.v||prof.v.length<6)return[];
+  const v=prof.v,raw=[];
+  for(let i=2;i<v.length-2;i++){
+    const g=(v[i+1]-v[i-1])*.5;
+    const gl=(v[i]-v[i-2])*.5;
+    const gr=(v[i+2]-v[i])*.5;
+    const s=dir==='rise'?g:-g;
+    const sl=dir==='rise'?gl:-gl;
+    const sr=dir==='rise'?gr:-gr;
+    if(s<=0)continue;
+    if(s>=sl&&s>=sr)raw.push({x:prof.x0+i,idx:i,score:s,dir});
+  }
+  raw.sort((a,b)=>b.score-a.score);
+  const chosen=[];
+  for(const p of raw){
+    if(chosen.every(q=>Math.abs(q.x-p.x)>=minGap))chosen.push(p);
+    if(chosen.length>=32)break;
+  }
+  return chosen.sort((a,b)=>a.x-b.x);
+}
+
+function v7NearestPeak(prof,startX,dir,span,offset=0){
+  if(!prof)return null;
+  const minGap=Math.max(5,Math.min(12,st.roi.w*.018));
+  const peaks=v7ProfilePeaks(prof,dir,minGap);
+  const target=startX-offset;
+  let best=null,bestScore=-Infinity;
+  for(const p of peaks){
+    const d=Math.abs(p.x-target);
+    if(d>span)continue;
+    const score=p.score/(1+d/Math.max(1,span)*.65);
+    if(score>bestScore){bestScore=score;best=p}
+  }
+  if(!best)return null;
+  return{baseX:best.x,x:clamp(best.x+offset,st.roi.x,st.roi.x+st.roi.w),score:best.score,dir};
+}
+
+function v7PickLrrByDerivative(y,model){
+  const prof=profileAt(y);
+  if(!prof||!st.nodes)return null;
+  const minGap=Math.max(5,st.roi.w*.018);
+  const fall=v7ProfilePeaks(prof,'fall',minGap);
+  const rise=v7ProfilePeaks(prof,'rise',minGap);
+  const old=[node(3)?.x??node(2).x,node(7)?.x??node(8).x,node(10)?.x??node(9).x];
+  let best=null,bestScore=-Infinity;
+  for(const L of fall){
+    for(const R1 of rise){
+      if(R1.x<L.x+minGap)continue;
+      for(const R2 of fall){
+        if(R2.x<R1.x+minGap)continue;
+        const g1=R1.x-L.x,g2=R2.x-R1.x;
+        if(g1>st.roi.w*.58||g2>st.roi.w*.58)continue;
+        const oldPenalty=(Math.abs(L.x-old[0])+Math.abs(R1.x-old[1])+Math.abs(R2.x-old[2]))/Math.max(1,st.roi.w);
+        const pitchPenalty=Math.abs(g1-g2)/Math.max(1,st.roi.w)*.55;
+        const learnPenalty=(
+          Math.abs((L.x+v7Offset(model,3))-old[0])+
+          Math.abs((R1.x+v7Offset(model,7))-old[1])+
+          Math.abs((R2.x+v7Offset(model,10))-old[2])
+        )/Math.max(1,st.roi.w)*.16;
+        const score=L.score+R1.score+R2.score-(oldPenalty+pitchPenalty+learnPenalty)*(L.score+R1.score+R2.score)*.30;
+        if(score>bestScore){bestScore=score;best={L,R1,R2,score,g1,g2}};
+      }
+    }
+  }
+  return best;
+}
+
+function v7SetNodeX(id,x){
+  const p=node(id);
+  if(p)p.x=clamp(x,st.roi.x,st.roi.x+st.roi.w);
+}
+
+function v7FitNodeOnRow(id,y,startX,model,span){
+  const prof=profileAt(y);
+  const hit=v7NearestPeak(prof,startX,v7Dir(id),span,v7Offset(model,id));
+  if(!hit)return false;
+  v7SetNodeX(id,hit.x);
+  return true;
+}
+
+function v7ApplyDerivativeFit(){
+  if(!st.roi||!st.gray||!st.nodes||!st.measure)return false;
+  const model=st.v7MlModel||v7LoadModel();
+  const minGap=5;
+  let changed=false;
+  const triple=v7PickLrrByDerivative(st.measure.wc,model);
+  if(triple){
+    v7SetNodeX(3,triple.L.x+v7Offset(model,3));
+    v7SetNodeX(7,triple.R1.x+v7Offset(model,7));
+    v7SetNodeX(10,triple.R2.x+v7Offset(model,10));
+    changed=true;
+  }
+  const span=Math.max(9,Math.min(st.roi.w*.085,Math.max(14,(node(7).x-node(3).x)*.45)));
+  const rows=[
+    ['WA',[[2,node(3).x],[8,node(7).x],[9,node(10).x]]],
+    ['WC',[[3,node(3).x],[7,node(7).x],[10,node(10).x]]],
+    ['WB',[[4,node(3).x],[6,node(7).x],[11,node(10).x]]]
+  ];
+  for(const [row,items] of rows){
+    const y=v7RowY(row);
+    if(!Number.isFinite(y))continue;
+    for(const [id,start] of items){
+      if(v7FitNodeOnRow(id,y,start,model,span))changed=true;
+    }
+  }
+  const leftSpan=Math.max(10,Math.min(st.roi.w*.12,node(8).x-node(2).x));
+  v7FitNodeOnRow(1,st.measure.wa,node(2).x-leftSpan,model,leftSpan);
+  v7FitNodeOnRow(12,st.measure.wb,node(4).x-leftSpan,model,leftSpan);
+  if(node(5))node(5).x=(node(4).x+node(6).x)/2;
+  syncY();
+  if(typeof enforceLrrOrder==='function')enforceLrrOrder(minGap);
+  if(node(2).x+minGap>node(8).x||node(8).x+minGap>node(9).x)return false;
+  st.v7DerivativeFit={mlSamples:model.samples?.length||0,learnedOffsets:Object.keys(model.avgOffsets||{}).length};
+  return changed;
+}
+
+function v7LearnSample(){
+  if(!st.roi||!st.gray||!st.nodes||!st.measure){alert('Set ROI and adjust template first.');return}
+  const model=v7LoadModel();
+  const ids=[1,2,3,4,6,7,8,9,10,11,12];
+  const items=[];
+  const span=Math.max(10,st.roi.w*.09);
+  for(const id of ids){
+    const row=v7RowForId(id);
+    const y=v7RowY(row);
+    const p=node(id);
+    if(!row||!Number.isFinite(y)||!p)continue;
+    const prof=profileAt(y);
+    const base=v7NearestPeak(prof,p.x,v7Dir(id),span,0);
+    if(!base)continue;
+    items.push({
+      id,
+      row,
+      dir:v7Dir(id),
+      offset:clamp(p.x-base.baseX,-Math.max(12,st.roi.w*.06),Math.max(12,st.roi.w*.06)),
+      nodeX:p.x,
+      baseX:base.baseX
+    });
+  }
+  if(!items.length){alert('No derivative peaks found near current nodes.');return}
+  model.samples.push({time:new Date().toISOString(),file:st.name||'',roi:{w:st.roi.w,h:st.roi.h},items});
+  if(model.samples.length>200)model.samples=model.samples.slice(model.samples.length-200);
+  v7SaveModel(model);
+  $('hint').textContent=`V7 MachineLearning: sample added (${model.samples.length}). Learned offsets will refine the next Auto fit.`;
+}
+
+function updateV7MlButton(){
+  const b=$('ml');
+  const model=st.v7MlModel||v7LoadModel();
+  if(b){
+    b.textContent=`ML ${model.samples.length}`;
+    b.title='V7: learn current manual red/green node offsets from first-derivative peaks. Shift+click resets V7 learning.';
+  }
+}
+
+if($('ml')){
+  $('ml').onclick=e=>{
+    if(e&&e.shiftKey){
+      if(confirm('Reset V7 MachineLearning samples?')){
+        localStorage.removeItem(V7_ML_KEY);
+        st.v7MlModel=v7LoadModel();
+        updateV7MlButton();
+        $('hint').textContent='V7 MachineLearning reset.';
+      }
+      return;
+    }
+    v7LearnSample();
+  };
+  updateV7MlButton();
+}
+
+const scanBeforeV7DerivativeLearning=scan;
+scan=function(){
+  if(!st.roi){alert('Draw ROI first.');return}
+  if(!st.nodes)setupTemplate();
+  scanBeforeV7DerivativeLearning();
+  const ok=v7ApplyDerivativeFit();
+  if(ok){
+    updateMetrics();
+    draw();
+    drawProfile();
+    if(typeof drawV3ContourWindow==='function')drawV3ContourWindow();
+  }
+  const m=st.v7DerivativeFit||{mlSamples:0,learnedOffsets:0};
+  $('hint').textContent=ok
+    ? `V7 Auto fit: first-derivative peaks set L/R1/R2, ML samples ${m.mlSamples}, learned offsets ${m.learnedOffsets}.`
+    : 'V7 Auto fit: derivative refinement did not find a stable non-crossing L/R1/R2; V6 result kept.';
+};
+$('scan').onclick=scan;
+
+resize();
+</script>
+</body>
+</html>

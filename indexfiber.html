@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>多模干涉耦合模型</title>
+  <style>
+    :root { --bg:#f4f7fb; --ink:#17202a; --muted:#5f6b7a; --line:#d6e0e9; --panel:#fff; --soft:#edf3f8; --teal:#087b70; --blue:#3157c8; --orange:#be6d12; --shadow:rgba(22,39,70,.11); font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:linear-gradient(180deg,#f9fbfe,var(--bg)); }
+    main { width:min(1220px,calc(100vw - 32px)); margin:0 auto; padding:26px 0; }
+    header { margin-bottom:18px; }
+    h1 { margin:0 0 7px; font-size:clamp(24px,3vw,38px); letter-spacing:0; }
+    .subtitle { margin:0; color:var(--muted); line-height:1.55; }
+    .layout { display:grid; grid-template-columns:minmax(0,1fr) 342px; gap:16px; align-items:start; }
+    .panel { background:rgba(255,255,255,.9); border:1px solid var(--line); border-radius:8px; box-shadow:0 14px 36px var(--shadow); }
+    .visual { padding:14px; }
+    .tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+    button, select { min-height:40px; border:1px solid var(--line); border-radius:7px; background:var(--panel); color:var(--ink); font:inherit; font-weight:700; padding:8px 10px; }
+    button { cursor:pointer; }
+    .tabs button.active, #reset, #play.active { background:var(--teal); color:#fff; border-color:var(--teal); }
+    canvas { display:block; width:100%; height:520px; border:1px solid var(--line); border-radius:7px; background:#fbfdff; }
+    .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:12px; }
+    .stat { min-width:0; padding:10px 12px; border:1px solid var(--line); border-radius:7px; background:var(--panel); }
+    .stat span { display:block; margin-bottom:4px; color:var(--muted); font-size:12px; white-space:nowrap; }
+    .stat strong { display:block; font-size:20px; line-height:1.2; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+    .controls { padding:16px; }
+    h2 { margin:0 0 12px; font-size:18px; }
+    .control { padding:12px 0; border-top:1px solid var(--line); }
+    .top { display:grid; grid-template-columns:1fr 86px; gap:10px; margin-bottom:12px; }
+    .animation { display:grid; grid-template-columns:122px minmax(0,1fr); gap:12px; align-items:center; padding:11px 0 3px; border-top:1px solid var(--line); }
+    .animation label { display:block; margin:0; }
+    .animation output { display:inline; margin-left:6px; }
+    label { display:flex; justify-content:space-between; gap:10px; margin-bottom:8px; font-weight:700; font-size:14px; }
+    output { color:var(--teal); font-variant-numeric:tabular-nums; white-space:nowrap; }
+    input[type="range"] { width:100%; accent-color:var(--teal); }
+    .formula { margin-top:12px; padding:11px 12px; border-radius:7px; color:#344154; background:var(--soft); font-size:12px; line-height:1.65; }
+    code { font-family:Consolas,"Cascadia Mono",monospace; }
+    @media (max-width:900px) { main { width:min(760px,calc(100vw - 20px)); padding:18px 0; } .layout { grid-template-columns:1fr; } canvas { height:470px; } }
+    @media (max-width:520px) { .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } canvas { height:420px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>空芯反谐振光纤与单模光纤的多模干涉耦合</h1>
+      <p class="subtitle">将空芯光纤端面的 LP01、LP11 与 LP21 分量作为相干复振幅叠加，观察横向偏移、模式含量和传播相位对耦合效率的影响。</p>
+    </header>
+    <section class="layout" aria-label="多模干涉耦合模型">
+      <div class="panel visual">
+        <div class="tabs" aria-label="图形选择">
+          <button id="fieldTab" class="active" type="button">横向模场</button>
+          <button id="lengthTab" type="button">传播长度扫描</button>
+        </div>
+        <canvas id="chart" width="900" height="560" aria-label="多模干涉耦合图"></canvas>
+        <div class="stats">
+          <div class="stat"><span>相干耦合效率</span><strong id="etaText">--</strong></div>
+          <div class="stat"><span>耦合损耗</span><strong id="lossText">--</strong></div>
+          <div class="stat"><span>相位差 LP11</span><strong id="phaseText">--</strong></div>
+          <div class="stat"><span>干涉周期</span><strong id="periodText">--</strong></div>
+        </div>
+      </div>
+      <aside class="panel controls">
+        <h2>模型参数</h2>
+        <div class="top"><select id="preset" aria-label="工作波长"><option value="1550">SMF @ 1550 nm</option><option value="1310">SMF @ 1310 nm</option></select><button id="reset" type="button">重置</button></div>
+        <div class="animation"><button id="play" class="active" type="button" aria-pressed="true">暂停动画</button><div><label for="speed">动画速度 <output id="speedOut">1.00×</output></label><input id="speed" type="range" min="0.25" max="2.50" step="0.05" value="1.00"></div></div>
+        <div class="control"><label for="lambda">波长 <output id="lambdaOut"></output></label><input id="lambda" type="range" min="1.20" max="1.70" step="0.01" value="1.55"></div>
+        <div class="control"><label for="mfdH">空芯光纤 MFD <output id="mfdHOut"></output></label><input id="mfdH" type="range" min="5" max="18" step="0.1" value="9"></div>
+        <div class="control"><label for="mfdS">SMF MFD <output id="mfdSOut"></output></label><input id="mfdS" type="range" min="6" max="14" step="0.1" value="10.4"></div>
+        <div class="control"><label for="offset">横向偏移 <output id="offsetOut"></output></label><input id="offset" type="range" min="0" max="7" step="0.1" value="1.2"></div>
+        <div class="control"><label for="p11">LP11 模功率 <output id="p11Out"></output></label><input id="p11" type="range" min="0" max="0.45" step="0.01" value="0.12"></div>
+        <div class="control"><label for="p21">LP21 模功率 <output id="p21Out"></output></label><input id="p21" type="range" min="0" max="0.35" step="0.01" value="0.05"></div>
+        <div class="control"><label for="dn">LP11 有效折射率差 <output id="dnOut"></output></label><input id="dn" type="range" min="0.00002" max="0.00100" step="0.00001" value="0.00030"></div>
+        <div class="control"><label for="length">干涉长度 <output id="lengthOut"></output></label><input id="length" type="range" min="0" max="30" step="0.05" value="8"></div>
+        <div class="formula"><strong>相干叠加近似</strong><br><code>E = √P₀A₀ + √P₁₁A₁eⁱφ₁₁ + √P₂₁A₂eⁱφ₂₁</code><br><code>η = |E|², φm = 2πΔnₘL / λ</code><br>LP11 与 LP21 的空间重叠由横向偏移估算；模型适合观察模式拍频与装调容差的趋势。</div>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const canvas = document.getElementById('chart'); const ctx = canvas.getContext('2d');
+    const ids = ['lambda','mfdH','mfdS','offset','p11','p21','dn','length'];
+    const controls = Object.fromEntries([...ids,'preset'].map(id => [id,document.getElementById(id)]));
+    const out = Object.fromEntries([...ids,'eta','loss','phase','period'].map(id => [id,document.getElementById(id+'Out') || document.getElementById(id+'Text')]));
+    const fieldTab=document.getElementById('fieldTab'), lengthTab=document.getElementById('lengthTab');
+    const playButton=document.getElementById('play'), speedControl=document.getElementById('speed'), speedOut=document.getElementById('speedOut');
+    let view='field', playing=!window.matchMedia('(prefers-reduced-motion: reduce)').matches, animationStart=performance.now(), animationFrame=0;
+    let centers={};
+    function p(over={}) { return Object.assign({},Object.fromEntries(ids.map(id=>[id,Number(controls[id].value)])),over); }
+    function model(q) {
+      const w0=q.mfdH/2, ws=q.mfdS/2, den=w0*w0+ws*ws, x=q.offset;
+      const base=Math.pow(2*w0*ws/den,2)*Math.exp(-2*x*x/den);
+      const a0=Math.sqrt(base), a11=a0*Math.sqrt(2)*x/Math.sqrt(den), a21=a0*.55*(2*x*x/den-.38);
+      const p0=Math.max(0,1-q.p11-q.p21), L=q.length*1000, phi11=2*Math.PI*q.dn*L/q.lambda, phi21=2*Math.PI*(1.82*q.dn)*L/q.lambda;
+      const er=Math.sqrt(p0)*a0+Math.sqrt(q.p11)*a11*Math.cos(phi11)+Math.sqrt(q.p21)*a21*Math.cos(phi21);
+      const ei=Math.sqrt(q.p11)*a11*Math.sin(phi11)+Math.sqrt(q.p21)*a21*Math.sin(phi21);
+      const eta=Math.min(1,Math.max(0,er*er+ei*ei));
+      return {base,a0,a11,a21,p0,phi11,phi21,eta,loss:-10*Math.log10(Math.max(eta,1e-10)),period:q.lambda/(q.dn*1000)};
+    }
+    function text(t,x,y,o={}) { ctx.save();ctx.fillStyle=o.color||'#17202a';ctx.font=`${o.weight||500} ${o.size||14}px Microsoft YaHei`;ctx.textAlign=o.align||'left';ctx.fillText(t,x,y);ctx.restore(); }
+    function line(x1,y1,x2,y2,c='#d8e0ea',w=1) { ctx.save();ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore(); }
+    function labels(){const q=p(),r=model(q);out.lambda.textContent=q.lambda.toFixed(2)+' µm';out.mfdH.textContent=q.mfdH.toFixed(1)+' µm';out.mfdS.textContent=q.mfdS.toFixed(1)+' µm';out.offset.textContent=q.offset.toFixed(1)+' µm';out.p11.textContent=(q.p11*100).toFixed(0)+'%';out.p21.textContent=(q.p21*100).toFixed(0)+'%';out.dn.textContent=q.dn.toFixed(5);out.length.textContent=q.length.toFixed(2)+' mm';out.eta.textContent=(r.eta*100).toFixed(2)+'%';out.loss.textContent=r.loss.toFixed(2)+' dB';out.phase.textContent=((r.phi11%(2*Math.PI)+2*Math.PI)%(2*Math.PI)).toFixed(2)+' rad';out.period.textContent=r.period.toFixed(2)+' mm';}
+    function modeShape(kind,x,w){const g=Math.exp(-2*x*x/(w*w));if(kind===0)return g;if(kind===1)return 1.8*x/w*g;return (2.4*x*x/(w*w)-.62)*g;}
+    function drawField(){ctx.clearRect(0,0,900,560);const q=p(),r=model(q),w=900,h=560,cx=450,cy=250,scale=35;
+      for(let i=0;i<6;i++)line(62,66+i*70,w-62,66+i*70,'#e6edf3'); line(cx,44,cx,h-116,'#9caab8',2); text('空芯反谐振光纤：相干多模场',70,34,{size:15});text('标准单模光纤 LP01 接收场',cx+28,34,{size:15});
+      const modes=[{kind:0,amp:Math.sqrt(r.p0),color:'#087b70',name:'LP01'},{kind:1,amp:Math.sqrt(q.p11),color:'#3157c8',name:'LP11'},{kind:2,amp:Math.sqrt(q.p21),color:'#be6d12',name:'LP21'}];
+      modes.forEach((m,k)=>{const yy=105+k*88;ctx.save();ctx.strokeStyle=m.color;ctx.lineWidth=2.4;ctx.beginPath();for(let i=0;i<=340;i++){const xu=(i-170)/scale;const y=yy-modeShape(m.kind,xu,q.mfdH/2)*m.amp*42;if(!i)ctx.moveTo(86+i,y);else ctx.lineTo(86+i,y);}ctx.stroke();ctx.restore();text(`${m.name}  ${(m.amp*m.amp*100).toFixed(0)}%`,70,yy+53,{color:m.color,size:13});});
+      ctx.save();ctx.strokeStyle='#087b70';ctx.lineWidth=3;ctx.beginPath();for(let i=0;i<=330;i++){const xu=(i-165)/scale-q.offset;const y=cy-modeShape(0,xu,q.mfdS/2)*65;if(!i)ctx.moveTo(cx+35+i,y);else ctx.lineTo(cx+35+i,y);}ctx.stroke();ctx.restore();
+      const eRe=Math.sqrt(r.p0)*r.a0+Math.sqrt(q.p11)*r.a11*Math.cos(r.phi11)+Math.sqrt(q.p21)*r.a21*Math.cos(r.phi21);const eIm=Math.sqrt(q.p11)*r.a11*Math.sin(r.phi11)+Math.sqrt(q.p21)*r.a21*Math.sin(r.phi21);
+      const ox=540,oy=430;line(ox-90,oy,ox+120,oy,'#98a5b5',1.5);line(ox,oy-75,ox,oy+72,'#98a5b5',1.5);ctx.save();ctx.strokeStyle='#3157c8';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox+eRe*90,oy-eIm*90);ctx.stroke();ctx.fillStyle='#3157c8';ctx.beginPath();ctx.arc(ox+eRe*90,oy-eIm*90,4,0,Math.PI*2);ctx.fill();ctx.restore();text('接收复振幅 E',ox-86,oy-88,{size:14});text('Re',ox+122,oy+4,{color:'#5f6b7a',size:12});text('Im',ox+5,oy-78,{color:'#5f6b7a',size:12});
+      text(`偏移 ${q.offset.toFixed(1)} µm`,70,493,{color:'#5f6b7a',size:13});text(`LP11 相位 ${((r.phi11%(2*Math.PI)+2*Math.PI)%(2*Math.PI)).toFixed(2)} rad`,70,517,{color:'#5f6b7a',size:13});text(`|E|² = ${(r.eta*100).toFixed(2)}%`,cx+25,517,{color:'#087b70',size:14}); }
+    function drawLength(){ctx.clearRect(0,0,900,560);const q=p(),w=900,h=560,L=78,R=42,T=48,B=78,pw=w-L-R,ph=h-T-B;for(let i=0;i<6;i++){const y=T+i*ph/5;line(L,y,L+pw,y,'#e1e9f0');text((100-i*20)+'%',L-12,y+4,{align:'right',size:12,color:'#5f6b7a'});}line(L,T,L,T+ph,'#98a5b5',1.5);line(L,T+ph,L+pw,T+ph,'#98a5b5',1.5);ctx.save();ctx.strokeStyle='#087b70';ctx.lineWidth=2.7;ctx.beginPath();for(let i=0;i<=320;i++){const len=30*i/320,r=model(p({length:len})),x=L+pw*i/320,y=T+(1-r.eta)*ph;if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.restore();const r=model(q),x=L+pw*q.length/30,y=T+(1-r.eta)*ph;ctx.fillStyle='#087b70';ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();for(let mm=0;mm<=30;mm+=5){const xx=L+pw*mm/30;line(xx,T+ph,xx,T+ph+5,'#98a5b5');text(mm+'',xx,T+ph+23,{align:'center',size:12,color:'#5f6b7a'});}text('相干耦合效率',L,T-19,{size:15});text('传播长度 L (mm)',L+pw/2,h-24,{align:'center',size:13,color:'#5f6b7a'});text(`LP11 拍频周期 ${r.period.toFixed(2)} mm`,L+pw-4,T-19,{align:'right',size:13,color:'#5f6b7a'});}
+    function draw(){labels();view==='field'?drawField():drawLength();}
+    function captureCenters(){centers=Object.fromEntries(ids.map(id=>[id,Number(controls[id].value)]));}
+    function clamp(id,value){const el=controls[id];return Math.min(Number(el.max),Math.max(Number(el.min),value));}
+    const animationSpec={
+      lambda:{amp:.08,freq:.37,phase:0},mfdH:{amp:.8,freq:.29,phase:.8},mfdS:{amp:.6,freq:.23,phase:1.7},
+      offset:{amp:.9,freq:.41,phase:2.2},p11:{amp:.06,freq:.31,phase:2.9},p21:{amp:.03,freq:.47,phase:1.1},
+      dn:{amp:.00008,freq:.19,phase:2.5},length:{amp:6,freq:.34,phase:.4}
+    };
+    function setPlayState(next){playing=next;playButton.textContent=playing?'暂停动画':'播放动画';playButton.classList.toggle('active',playing);playButton.setAttribute('aria-pressed',String(playing));if(playing){captureCenters();animationStart=performance.now();animationFrame=requestAnimationFrame(animate);}else cancelAnimationFrame(animationFrame);}
+    function animate(now){if(!playing)return;const t=(now-animationStart)/1000*Number(speedControl.value);for(const id of ids){const s=animationSpec[id];let value=centers[id]+s.amp*Math.sin(2*Math.PI*s.freq*t+s.phase);if(id==='p21')value=Math.min(value,.82-Number(controls.p11.value));controls[id].value=clamp(id,value);}draw();animationFrame=requestAnimationFrame(animate);}
+    ids.forEach(id=>controls[id].addEventListener('input',()=>{centers[id]=Number(controls[id].value);draw();}));
+    speedControl.addEventListener('input',()=>{speedOut.textContent=Number(speedControl.value).toFixed(2)+'×';});
+    playButton.addEventListener('click',()=>setPlayState(!playing));
+    controls.preset.addEventListener('change',()=>{if(controls.preset.value==='1550'){controls.lambda.value='1.55';controls.mfdS.value='10.4';}else{controls.lambda.value='1.31';controls.mfdS.value='9.2';}captureCenters();draw();});
+    document.getElementById('reset').addEventListener('click',()=>{controls.preset.value='1550';controls.lambda.value='1.55';controls.mfdH.value='9';controls.mfdS.value='10.4';controls.offset.value='1.2';controls.p11.value='.12';controls.p21.value='.05';controls.dn.value='.00030';controls.length.value='8';captureCenters();animationStart=performance.now();draw();});
+    fieldTab.addEventListener('click',()=>{view='field';fieldTab.classList.add('active');lengthTab.classList.remove('active');draw();});lengthTab.addEventListener('click',()=>{view='length';lengthTab.classList.add('active');fieldTab.classList.remove('active');draw();});
+    captureCenters();if(playing){playButton.textContent='暂停动画';animationFrame=requestAnimationFrame(animate);}else{playButton.textContent='播放动画';playButton.classList.remove('active');playButton.setAttribute('aria-pressed','false');draw();}
+  </script>
+</body>
+</html>
