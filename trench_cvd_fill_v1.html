@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trench CVD Fill Simulator v1</title>
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Segoe UI,Arial,"Microsoft YaHei",sans-serif;
+      background:#111821;
+      color:#eaf1f8;
+      overflow:hidden;
+    }
+    .app{
+      height:100vh;
+      display:grid;
+      grid-template-columns:minmax(560px,1fr) 360px;
+      grid-template-rows:54px 1fr 170px;
+    }
+    header{
+      grid-column:1/3;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 12px;
+      background:#202a34;
+      border-bottom:1px solid #3a4653;
+      white-space:nowrap;
+      overflow:hidden;
+    }
+    h1{font-size:17px;margin:0 12px 0 0;color:#8ee9c6;font-weight:700}
+    button,input,select{
+      height:32px;
+      border:1px solid #4a5867;
+      border-radius:6px;
+      background:#151e28;
+      color:#eaf1f8;
+      font:inherit;
+      padding:0 9px;
+    }
+    button{cursor:pointer;background:#283646}
+    button.primary{background:#00a878;border-color:#00a878;color:white}
+    button.blue{background:#1f7fd2;border-color:#1f7fd2;color:white}
+    button.warn{background:#4b2f17;border-color:#8f5a26;color:#ffd59b}
+    label{font-size:12px;color:#aab6c4}
+    .headGroup{display:flex;align-items:center;gap:6px;padding-right:10px;border-right:1px solid #435160}
+    .mini{width:78px}
+    .stage{
+      position:relative;
+      background:#0d141c;
+      overflow:hidden;
+    }
+    #cvdCanvas{
+      width:100%;
+      height:100%;
+      display:block;
+      background:#0d141c;
+    }
+    .status{
+      position:absolute;
+      left:16px;
+      bottom:14px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      max-width:calc(100% - 32px);
+    }
+    .pill{
+      background:rgba(13,20,28,.88);
+      border:1px solid rgba(150,170,190,.32);
+      border-radius:8px;
+      padding:7px 10px;
+      color:#dfe9f4;
+      font-size:13px;
+    }
+    aside{
+      grid-row:2/4;
+      grid-column:2;
+      overflow:auto;
+      background:#1a2330;
+      border-left:1px solid #3a4653;
+      padding:12px;
+    }
+    .section{
+      border:1px solid #354250;
+      border-radius:8px;
+      background:#151e28;
+      padding:12px;
+      margin-bottom:12px;
+    }
+    .section h2{
+      margin:0 0 10px;
+      font-size:13px;
+      color:#8ee9c6;
+      letter-spacing:.2px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 96px;
+      gap:8px;
+      align-items:center;
+      margin-bottom:8px;
+    }
+    .grid input,.grid select{width:100%}
+    .inline{
+      display:flex;
+      align-items:center;
+      gap:7px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+    .hint{font-size:12px;color:#aab6c4;line-height:1.45}
+    .metrics{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+    }
+    .metric{
+      background:#101821;
+      border:1px solid #2e3a48;
+      border-radius:7px;
+      padding:8px;
+      min-height:58px;
+    }
+    .metric .k{font-size:12px;color:#aab6c4}
+    .metric .v{font-size:19px;font-weight:700;color:#f4f8fc;margin-top:3px}
+    .metric.good .v{color:#8ee9c6}
+    .metric.warn .v{color:#ffd166}
+    .profile{
+      grid-column:1;
+      grid-row:3;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+      background:#e9eef4;
+      padding:12px;
+      border-top:1px solid #c9d3df;
+    }
+    .plot{
+      background:white;
+      border:1px solid #cbd5df;
+      border-radius:7px;
+      min-height:140px;
+      position:relative;
+    }
+    .plot canvas{width:100%;height:100%;display:block}
+    .plotTitle{
+      position:absolute;
+      left:10px;
+      top:7px;
+      font-size:12px;
+      color:#283646;
+      background:rgba(255,255,255,.78);
+      padding:2px 5px;
+      border-radius:4px;
+    }
+    .legend{
+      position:absolute;
+      right:12px;
+      top:12px;
+      display:flex;
+      gap:10px;
+      font-size:12px;
+      color:#dfe9f4;
+      background:rgba(13,20,28,.72);
+      border-radius:7px;
+      padding:5px 8px;
+    }
+    .sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+    @media(max-width:980px){
+      body{overflow:auto}
+      .app{height:auto;min-height:100vh;grid-template-columns:1fr;grid-template-rows:auto 560px auto auto}
+      header{grid-column:1;flex-wrap:wrap;height:auto;white-space:normal}
+      aside{grid-column:1;grid-row:3}
+      .profile{grid-row:4;grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Trench CVD Fill v1</h1>
+    <div class="headGroup">
+      <button id="run" class="primary">运行</button>
+      <button id="pause">暂停</button>
+      <button id="reset" class="warn">重置薄膜</button>
+    </div>
+    <div class="headGroup">
+      <label>时间</label><input id="time" class="mini" type="number" value="480" min="0" step="10"><label>min</label>
+      <label>速度</label><input id="speed" class="mini" type="number" value="30" min="1" max="600" step="1"><label>min/s</label>
+    </div>
+    <div class="headGroup">
+      <button id="apply" class="blue">应用参数</button>
+      <button id="exportCsv">CSV</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <canvas id="cvdCanvas"></canvas>
+    <div class="legend">
+      <span><i class="sw" style="background:#9ba5ad"></i>SiC mesa</span>
+      <span><i class="sw" style="background:#0b0f14"></i>trench void</span>
+      <span><i class="sw" style="background:#a9f2c8"></i>new crystal</span>
+    </div>
+    <div class="status" id="status"></div>
+  </main>
+
+  <aside>
+    <div class="section">
+      <h2>气体流量 / 工艺</h2>
+      <div class="grid"><label>H2 载气 L/min</label><input id="h2" type="number" value="40" min="0" step="0.1"></div>
+      <div class="grid"><label>Ar L/min</label><input id="ar" type="number" value="0" min="0" step="0.1"></div>
+      <div class="grid"><label>HCl L/min</label><input id="hcl" type="number" value="0.6" min="0" step="0.01"></div>
+      <div class="grid"><label>N2 L/min</label><input id="n2" type="number" value="0" min="0" step="0.01"></div>
+      <div class="grid"><label>SiH4 sccm</label><input id="sih4" type="number" value="40" min="0" step="1"></div>
+      <div class="grid"><label>C3H8 sccm</label><input id="c3h8" type="number" value="12" min="0" step="1"></div>
+      <div class="grid"><label>气压 kPa</label><input id="pressure" type="number" value="20" min="1" step="1"></div>
+      <div class="grid"><label>温度 °C</label><input id="temp" type="number" value="1580" min="1000" step="10"></div>
+      <p class="hint">模型用前驱体供给、HCl 刻蚀、温度和压力估测净生长速率；用于趋势比较，不替代实测校准。</p>
+    </div>
+
+    <div class="section">
+      <h2>Trench 几何</h2>
+      <div class="grid"><label>沟槽深度 D μm</label><input id="depth" type="number" value="10" min="0.1" step="0.1"></div>
+      <div class="grid"><label>沟槽宽度 S μm</label><input id="width" type="number" value="3" min="0.05" step="0.05"></div>
+      <div class="grid"><label>Pitch μm</label><input id="pitch" type="number" value="6" min="0.1" step="0.1"></div>
+      <div class="grid"><label>L/S 比</label><input id="ls" type="number" value="1.67" min="0.05" step="0.01"></div>
+      <div class="grid"><label>显示周期数</label><input id="periods" type="number" value="5" min="2" max="12" step="1"></div>
+      <div class="grid"><label>气相空间高度 μm</label><input id="gasHeight" type="number" value="18" min="2" step="0.5"></div>
+      <div class="inline">
+        <label><input id="useLs" type="checkbox"> 用 L/S 自动计算 pitch</label>
+      </div>
+      <div class="grid"><label>侧壁沉积系数</label><input id="sideFactor" type="number" value="0.62" min="0" max="2" step="0.01"></div>
+      <div class="grid"><label>底部传质系数</label><input id="bottomFactor" type="number" value="1.00" min="0" max="2" step="0.01"></div>
+    </div>
+
+    <div class="section">
+      <h2>估测结果</h2>
+      <div class="metrics">
+        <div class="metric good"><div class="k">Mesa top rate</div><div class="v" id="mTop">--</div></div>
+        <div class="metric good"><div class="k">Trench bottom rate</div><div class="v" id="mBottom">--</div></div>
+        <div class="metric"><div class="k">Sidewall rate</div><div class="v" id="mSide">--</div></div>
+        <div class="metric warn"><div class="k">Fill state</div><div class="v" id="mFill">--</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>模型说明</h2>
+      <p class="hint">
+        顶部生长速率由气体组成估算。底部速率 = 顶部速率 × 深宽比传质衰减 × L/S loading 修正。
+        画布显示封闭气相空间和若干个 trench 周期。浅绿色区域为时间累计的新晶体：mesa 顶部增厚、沟槽底部上长、侧壁向内闭合。
+      </p>
+    </div>
+  </aside>
+
+  <section class="profile">
+    <div class="plot"><div class="plotTitle">填埋进度 vs 时间</div><canvas id="fillPlot"></canvas></div>
+    <div class="plot"><div class="plotTitle">顶部 / 底部 / 侧壁速率</div><canvas id="ratePlot"></canvas></div>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const canvas=$('cvdCanvas'),ctx=canvas.getContext('2d');
+const fillCanvas=$('fillPlot'),fctx=fillCanvas.getContext('2d');
+const rateCanvas=$('ratePlot'),rctx=rateCanvas.getContext('2d');
+let running=false,lastTs=0,history=[],animTime=0;
+
+const num=id=>{
+  const v=parseFloat($(id).value);
+  return Number.isFinite(v)?v:0;
+};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const fmt=(v,d=2)=>Number.isFinite(v)?v.toFixed(d):'--';
+
+function params(){
+  const width=Math.max(0.05,num('width'));
+  let pitch=Math.max(width+.05,num('pitch'));
+  const ls=Math.max(0.05,num('ls'));
+  if($('useLs').checked){
+    pitch=width*(1+ls);
+    $('pitch').value=fmt(pitch,2);
+  }else{
+    $('ls').value=fmt(Math.max(0.01,(pitch-width)/width),2);
+  }
+  return{
+    h2:num('h2'),ar:num('ar'),hcl:num('hcl'),n2:num('n2'),sih4:num('sih4'),c3h8:num('c3h8'),
+    pressure:Math.max(1,num('pressure')),temp:Math.max(300,num('temp')),
+    depth:Math.max(.1,num('depth')),width,pitch,ls:Math.max(0.01,(pitch-width)/width),
+    periods:clamp(Math.round(num('periods')||5),2,12),
+    gasHeight:Math.max(2,num('gasHeight')),
+    sideFactor:Math.max(0,num('sideFactor')),bottomFactor:Math.max(0,num('bottomFactor')),
+    time:Math.max(0,num('time')),speed:Math.max(1,num('speed'))
+  };
+}
+
+function rates(p){
+  const carrier=Math.max(1,p.h2+p.ar+p.n2+p.hcl);
+  const precursor=Math.sqrt(Math.max(0,p.sih4)*Math.max(0,p.c3h8));
+  const supply=precursor/(carrier*7.5+precursor);
+  const pressureFactor=Math.pow(p.pressure/20,.25);
+  const tempFactor=Math.exp((p.temp-1580)/420);
+  const cSiRatio=(Math.max(0,p.c3h8)*3+1e-6)/(Math.max(0,p.sih4)+1e-6);
+  const stoich=Math.exp(-Math.abs(Math.log(cSiRatio/.9))*.42);
+  const thermalWindow=Math.exp(-Math.pow((p.temp-1580)/520,2)*.18);
+  const kinetic=clamp(supply*pressureFactor*tempFactor*stoich*thermalWindow,0,3);
+  const dep=4.8*kinetic;
+  const etch=0.42*p.hcl/(carrier+p.hcl+1)*Math.exp((p.temp-1580)/520)*10;
+  const top=Math.max(0,dep-etch);
+  const aratio=p.depth/p.width;
+  const open=p.width/p.pitch;
+  const access=1/(1+0.30*Math.pow(aratio,1.22)/(0.42+open));
+  const loading=0.82+0.18*open;
+  const bottom=top*access*loading*p.bottomFactor;
+  const side=top*(0.36+0.34*access)*p.sideFactor;
+  return{top,bottom,side,dep,etch,access,aratio,open,kinetic,stoich,thermalWindow,cSiRatio};
+}
+
+function stateAt(p,t){
+  const r=rates(p);
+  const topFilm=r.top*t;
+  const bottomFill=clamp(r.bottom*t,0,p.depth);
+  const sideFill=clamp(r.side*t,0,p.width/2);
+  const fillByBottom=bottomFill/p.depth;
+  const fillBySide=(sideFill*2)/p.width;
+  const filled=clamp(Math.max(fillByBottom,fillBySide,.55*fillByBottom+.45*fillBySide),0,1);
+  const closed=sideFill*2>=p.width*.985 || bottomFill>=p.depth*.985;
+  return{...r,t,topFilm,bottomFill,sideFill,filled,closed};
+}
+
+function resizeCanvas(c){
+  const r=c.getBoundingClientRect();
+  c.width=Math.max(1,Math.round(r.width*devicePixelRatio));
+  c.height=Math.max(1,Math.round(r.height*devicePixelRatio));
+  const g=c.getContext('2d');
+  g.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  return{w:r.width,h:r.height};
+}
+
+function draw(){
+  const p=params();
+  const s=stateAt(p,p.time);
+  drawCrossSection(p,s);
+  drawPlots(p);
+  updateMetrics(p,s);
+}
+
+function drawCrossSection(p,s){
+  const box=resizeCanvas(canvas),w=box.w,h=box.h;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0d141c';
+  ctx.fillRect(0,0,w,h);
+
+  const periods=p.periods;
+  const unitsW=p.pitch*periods;
+  const headSpace=p.gasHeight;
+  const unitsH=p.depth+headSpace+p.depth*.16;
+  const scale=Math.min(w/(unitsW*1.08),h/(unitsH*1.10));
+  const x0=(w-unitsW*scale)/2;
+  const ySurface=h*.08+headSpace*scale;
+  const trenchW=p.width*scale,pitch=p.pitch*scale,depth=p.depth*scale,mesaW=(p.pitch-p.width)*scale;
+  const side=s.sideFill*scale,bottom=s.bottomFill*scale;
+  const topFilmVisible=Math.min(s.topFilm,headSpace*.92)*scale;
+
+  ctx.save();
+  ctx.translate(x0,ySurface);
+
+  const chamberX=-pitch*.18;
+  const chamberW=unitsW*scale+pitch*.36;
+  const chamberTop=-headSpace*scale;
+  const gasTop=-p.gasHeight*scale;
+  const gasGradient=ctx.createLinearGradient(0,chamberTop,0,0);
+  gasGradient.addColorStop(0,'rgba(93,139,190,.22)');
+  gasGradient.addColorStop(1,'rgba(93,139,190,.06)');
+  ctx.fillStyle=gasGradient;
+  ctx.fillRect(chamberX,chamberTop,chamberW,headSpace*scale);
+  ctx.strokeStyle='rgba(173,196,220,.72)';
+  ctx.lineWidth=2;
+  ctx.strokeRect(chamberX,chamberTop,chamberW,headSpace*scale+depth+p.depth*.16*scale);
+  ctx.strokeStyle='rgba(173,196,220,.36)';
+  ctx.setLineDash([6,5]);
+  ctx.beginPath();
+  ctx.moveTo(chamberX,gasTop);
+  ctx.lineTo(chamberX+chamberW,gasTop);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const gases=[
+    ['H2',p.h2],['Ar',p.ar],['HCl',p.hcl],['N2',p.n2],['SiH4',p.sih4/1000],['C3H8',p.c3h8/1000]
+  ].filter(g=>g[1]>0);
+  ctx.font='12px Segoe UI';
+  ctx.fillStyle='rgba(226,238,250,.90)';
+  ctx.fillText(`sealed gas space ${fmt(p.gasHeight,1)} μm`,chamberX+8,chamberTop+17);
+  const totalGas=gases.reduce((a,b)=>a+b[1],0)||1;
+  let gx=chamberX+12;
+  for(const [name,val] of gases){
+    const bw=clamp((val/totalGas)*chamberW*.58,18,96);
+    ctx.fillStyle=name==='HCl'?'rgba(255,209,102,.68)':name==='SiH4'||name==='C3H8'?'rgba(169,242,200,.70)':'rgba(126,190,255,.46)';
+    ctx.fillRect(gx,chamberTop+28,bw,8);
+    ctx.fillStyle='rgba(226,238,250,.92)';
+    ctx.fillText(name,gx,chamberTop+51);
+    gx+=bw+10;
+  }
+
+  ctx.fillStyle='#9ba5ad';
+  ctx.fillRect(chamberX,0,chamberW,depth+p.depth*.16*scale);
+
+  for(let i=0;i<periods;i++){
+    const tx=i*pitch+mesaW;
+    ctx.fillStyle='#0b0f14';
+    ctx.fillRect(tx,0,trenchW,depth);
+
+    ctx.fillStyle='#a9f2c8';
+    if(topFilmVisible>0){
+      ctx.fillRect(i*pitch,-topFilmVisible,mesaW,topFilmVisible);
+    }
+    if(bottom>0)ctx.fillRect(tx+side,depth-bottom,Math.max(0,trenchW-side*2),bottom);
+    if(side>0){
+      ctx.fillRect(tx,0,side,depth);
+      ctx.fillRect(tx+trenchW-side,0,side,depth);
+    }
+
+    const remW=Math.max(0,trenchW-side*2),remH=Math.max(0,depth-bottom);
+    if(remW>0&&remH>0){
+      ctx.fillStyle='#0b0f14';
+      ctx.fillRect(tx+side,0,remW,remH);
+    }
+
+    ctx.strokeStyle='rgba(234,241,248,.36)';
+    ctx.lineWidth=1;
+    ctx.strokeRect(tx,0,trenchW,depth);
+  }
+
+  drawGasMolecules(ctx,p,s,{chamberX,chamberW,chamberTop,headSpace,scale,depth,pitch,trenchW,mesaW,periods});
+
+  ctx.strokeStyle='#eaf1f8';
+  ctx.lineWidth=1.5;
+  ctx.setLineDash([5,4]);
+  ctx.beginPath();
+  ctx.moveTo(chamberX,0);
+  ctx.lineTo(chamberX+chamberW,0);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle='#dfe9f4';
+  ctx.font='13px Segoe UI';
+  ctx.fillText(`D ${fmt(p.depth,1)} μm`,6,depth/2);
+  ctx.fillText(`S ${fmt(p.width,2)} μm`,mesaW+4,depth+20);
+  ctx.fillText(`Pitch ${fmt(p.pitch,2)} μm`,mesaW+trenchW+8,-8);
+  ctx.fillText(`${periods} periods`,chamberX+chamberW-84,chamberTop+17);
+  if(s.topFilm>headSpace*.92){
+    ctx.fillStyle='#ffd166';
+    ctx.fillText(`top crystal total ${fmt(s.topFilm,2)} μm`,chamberX+8,chamberTop+headSpace*scale-8);
+  }
+  ctx.restore();
+
+  ctx.fillStyle='#dfe9f4';
+  ctx.font='14px Segoe UI';
+  ctx.fillText(`Time ${fmt(p.time,1)} min · top film ${fmt(s.topFilm,2)} μm · bottom fill ${fmt(s.bottomFill,2)} μm · side ${fmt(s.sideFill,2)} μm`,16,28);
+}
+
+function drawGasMolecules(g,p,s,geom){
+  const {chamberX,chamberW,chamberTop,headSpace,scale,depth,pitch,trenchW,mesaW,periods}=geom;
+  const gasH=headSpace*scale;
+  const t=animTime*.001;
+  const colors={
+    H2:'#8cc8ff',Ar:'#b4b9c4',HCl:'#ffd166',N2:'#b9a7ff',Si:'#d7f9ff',C:'#95f0aa'
+  };
+  const species=[
+    {kind:'H2',value:p.h2,base:10,scale:1.25,r:1.8,reactive:false},
+    {kind:'Ar',value:p.ar,base:0,scale:1.5,r:1.9,reactive:false},
+    {kind:'HCl',value:p.hcl,base:0,scale:14,r:2.0,reactive:false},
+    {kind:'N2',value:p.n2,base:0,scale:12,r:1.8,reactive:false},
+    {kind:'Si',value:p.sih4,base:0,scale:.42,r:2.7,reactive:true},
+    {kind:'C',value:p.c3h8,base:0,scale:.70,r:2.7,reactive:true}
+  ].map(sp=>({...sp,count:clamp(Math.round((sp.base+Math.sqrt(Math.max(0,sp.value))*sp.scale)*2),0,sp.reactive?96:140)}));
+  const reactiveCount=species.filter(s=>s.reactive).reduce((a,b)=>a+b.count,0);
+  for(const sp of species){
+    for(let j=0;j<sp.count;j++){
+      const i=j+(sp.kind.charCodeAt(0)*17);
+      const seed=((i*37.719)+(sp.kind.length*.137))%1;
+      const lane=(i*0.61803398875+j*.073)%1;
+      const speed=sp.reactive?(.15+s.kinetic*.12):(.07+Math.sqrt(Math.max(0,sp.value))*.004);
+      const phase=(t*speed+lane)%1;
+      const drift=Math.sin(t*(sp.reactive?2.4:1.3)+i)*7;
+      let x=chamberX+((i*91.7+t*(sp.reactive?10:22)*(0.25+seed))%chamberW);
+      let y=chamberTop+8+phase*(gasH-15);
+
+      if(sp.reactive){
+        const target=reactiveTarget(i,j,p,s,geom,sp.kind);
+        const fromX=chamberX+((i*83.3+seed*chamberW)%chamberW);
+        const fromY=chamberTop+8;
+        const q=phase;
+        const bend=Math.sin(q*Math.PI)*18*Math.sin(i);
+        x=fromX+(target.x-fromX)*q+bend;
+        y=fromY+(target.y-fromY)*q;
+      }
+
+      g.beginPath();
+      g.fillStyle=colors[sp.kind];
+      g.globalAlpha=sp.reactive?0.95:0.48;
+      g.arc(x+drift*(sp.reactive?.25:1),y,sp.r,0,Math.PI*2);
+      g.fill();
+
+      if(sp.reactive&&phase>.88){
+        const target=reactiveTarget(i,j,p,s,geom,sp.kind);
+        g.globalAlpha=.18+s.kinetic*.16;
+        g.fillStyle='#a9f2c8';
+        g.beginPath();
+        g.arc(target.x,target.y,5.5,0,Math.PI*2);
+        g.fill();
+        g.globalAlpha=.95;
+        g.fillStyle=colors[sp.kind];
+        g.font='9px Segoe UI';
+        g.fillText(sp.kind,target.x+3,target.y-4);
+      }
+    }
+  }
+  g.globalAlpha=1;
+  g.fillStyle='rgba(226,238,250,.78)';
+  g.font='11px Segoe UI';
+  g.fillText(`particles respond to input flows · reactive Si/C ${reactiveCount}`,chamberX+8,chamberTop+headSpace*scale-8);
+}
+
+function reactiveTarget(i,j,p,s,geom,kind){
+  const {chamberX,scale,depth,pitch,trenchW,mesaW,periods}=geom;
+  const periodIndex=Math.floor(((i*1.91+j*.37)%periods));
+  const tx=periodIndex*pitch+mesaW;
+  const trenchBias=clamp(.76+s.access*.18+p.width/p.pitch*.12,0.78,0.96);
+  const choose=((i*0.754877+j*.193)%1);
+  const bottomY=Math.max(4,depth-s.bottomFill*scale);
+  const sideInset=s.sideFill*scale;
+  if(choose<trenchBias){
+    const innerW=Math.max(2,trenchW-sideInset*2);
+    const x=tx+sideInset+((i*.371+j*.173)%1)*innerW;
+    const y=bottomY+Math.sin(i+j)*1.5;
+    return{x,y};
+  }
+  if(choose<trenchBias+.22){
+    const left=((i+j)%2)===0;
+    const x=tx+(left?sideInset:trenchW-sideInset);
+    const y=clamp(((i*.217+j*.493)%1)*depth,0,Math.max(0,depth-s.bottomFill*scale));
+    return{x,y};
+  }
+  const innerW=Math.max(2,trenchW-sideInset*2);
+  const x=tx+sideInset+((i*.431+j*.127)%1)*innerW;
+  const y=clamp(bottomY-depth*.08-Math.abs(Math.sin(i+j))*depth*.12,0,Math.max(0,depth-s.bottomFill*scale));
+  return{x,y};
+}
+
+function updateMetrics(p,s){
+  $('mTop').textContent=`${fmt(s.top,3)} μm/min`;
+  $('mBottom').textContent=`${fmt(s.bottom,3)} μm/min`;
+  $('mSide').textContent=`${fmt(s.side,3)} μm/min`;
+  $('mFill').textContent=s.closed?'closed':`${fmt(s.filled*100,1)}%`;
+  $('status').innerHTML=[
+    `AR ${fmt(s.aratio,2)}`,
+    `open ${fmt(s.open*100,1)}%`,
+    `bottom/top ${fmt(s.top?s.bottom/s.top:0,2)}`,
+    `net deposition ${fmt(s.dep-s.etch,3)} μm/min`,
+    `C/Si ${fmt(s.cSiRatio,2)} · sticking ${fmt(s.kinetic,2)}`
+  ].map(x=>`<div class="pill">${x}</div>`).join('');
+}
+
+function buildHistory(p){
+  const maxT=Math.max(1,p.time);
+  const steps=90,arr=[];
+  for(let i=0;i<=steps;i++){
+    const t=maxT*i/steps;
+    arr.push(stateAt(p,t));
+  }
+  return arr;
+}
+
+function drawPlots(p){
+  history=buildHistory(p);
+  drawFillPlot(p,history);
+  drawRatePlot(p,stateAt(p,p.time));
+}
+
+function plotFrame(g,w,h){
+  g.clearRect(0,0,w,h);
+  g.fillStyle='white';
+  g.fillRect(0,0,w,h);
+  g.strokeStyle='#d4dde7';
+  g.strokeRect(.5,.5,w-1,h-1);
+  g.strokeStyle='#edf1f6';
+  for(let i=1;i<4;i++){
+    const y=24+(h-42)*i/4;
+    g.beginPath();g.moveTo(42,y);g.lineTo(w-12,y);g.stroke();
+  }
+}
+
+function drawFillPlot(p,arr){
+  const box=resizeCanvas(fillCanvas),w=box.w,h=box.h,g=fctx;
+  plotFrame(g,w,h);
+  const x0=42,x1=w-14,y0=h-18,y1=26;
+  g.strokeStyle='#00a878';g.lineWidth=2;
+  g.beginPath();
+  arr.forEach((s,i)=>{
+    const x=x0+(x1-x0)*i/(arr.length-1);
+    const y=y0-(y0-y1)*s.filled;
+    i?g.lineTo(x,y):g.moveTo(x,y);
+  });
+  g.stroke();
+  g.fillStyle='#263646';g.font='12px Segoe UI';
+  g.fillText('0',24,y0+4);
+  g.fillText('100%',12,y1+4);
+  g.fillText(`${fmt(p.time,0)} min`,x1-52,y0+15);
+}
+
+function drawRatePlot(p,s){
+  const box=resizeCanvas(rateCanvas),w=box.w,h=box.h,g=rctx;
+  plotFrame(g,w,h);
+  const vals=[
+    ['top',s.top,'#00a878'],
+    ['bottom',s.bottom,'#1f7fd2'],
+    ['side',s.side,'#ffd166']
+  ];
+  const max=Math.max(.001,...vals.map(v=>v[1]));
+  const x0=48,barW=Math.min(64,(w-84)/3*.52),gap=(w-84)/3;
+  vals.forEach((v,i)=>{
+    const bh=(h-54)*v[1]/max;
+    const x=x0+i*gap+gap*.22,y=h-22-bh;
+    g.fillStyle=v[2];g.fillRect(x,y,barW,bh);
+    g.fillStyle='#263646';g.font='12px Segoe UI';g.textAlign='center';
+    g.fillText(v[0],x+barW/2,h-7);
+    g.fillText(fmt(v[1],3),x+barW/2,y-6);
+  });
+  g.textAlign='left';
+}
+
+function step(ts){
+  if(!running){lastTs=ts;return}
+  if(!lastTs)lastTs=ts;
+  const dt=(ts-lastTs)/1000;
+  lastTs=ts;
+  animTime=ts;
+  $('time').value=fmt(num('time')+num('speed')*dt,2);
+  draw();
+  requestAnimationFrame(step);
+}
+
+$('run').onclick=()=>{
+  if(running)return;
+  running=true;lastTs=0;requestAnimationFrame(step);
+};
+$('pause').onclick=()=>{running=false};
+$('reset').onclick=()=>{$('time').value=0;draw()};
+$('apply').onclick=draw;
+$('useLs').onchange=draw;
+document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',()=>{if(el.id!=='time'||!running)draw()}));
+
+$('exportCsv').onclick=()=>{
+  const p=params(),rows=buildHistory(p);
+  const lines=['time_min,mesa_top_um,trench_bottom_um,sidewall_um,fill_percent,top_rate_um_min,bottom_rate_um_min,side_rate_um_min'];
+  for(const s of rows)lines.push([s.t,s.topFilm,s.bottomFill,s.sideFill,s.filled*100,s.top,s.bottom,s.side].map(v=>Number.isFinite(v)?v.toFixed(6):'').join(','));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'}));
+  a.download='trench_cvd_fill_v1.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+window.addEventListener('resize',draw);
+draw();
+</script>
+</body>
+</html>
