@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS 批量梯形校正工具</title>
+    <!-- 引入 OpenCV.js 与 JSZip 打包库 -->
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady();"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 16px; background: #f4f4f7; color: #333; }
+        .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        h2 { font-size: 18px; margin-top: 0; }
+        input[type="file"] { display: none; }
+        .btn { display: block; width: 100%; padding: 12px 0; text-align: center; background: #007aff; color: #fff; border-radius: 10px; font-weight: bold; border: none; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        .btn:disabled { background: #ccc; }
+        .status { margin-top: 10px; font-size: 14px; color: #666; text-align: center; }
+        #preview { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+        canvas, img { width: 100%; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>📱 iOS 批量梯形校正</h2>
+    <p style="font-size: 13px; color: #666;">自动识别图片梯形/文档边缘，整图拉伸修正且保留完整背景。</p>
+    
+    <button class="btn" id="uploadBtn" disabled onclick="document.getElementById('fileInput').click()">加载中，请稍候...</button>
+    <input type="file" id="fileInput" multiple accept="image/*" onchange="handleFiles(this.files)">
+    <button class="btn" id="downloadZipBtn" style="background:#34c759; display:none;" onclick="downloadZip()">⬇️ 下载压缩包 (.zip)</button>
+    
+    <div class="status" id="status">正在加载 WebAssembly 引擎...</div>
+</div>
+
+<div class="card">
+    <h2>📷 处理结果预览</h2>
+    <div id="preview"></div>
+</div>
+
+<script>
+let cvReady = false;
+let processedFiles = [];
+
+function onOpenCvReady() {
+    cvReady = true;
+    document.getElementById('uploadBtn').disabled = false;
+    document.getElementById('uploadBtn').innerText = "选择相册图片 (支持多选)";
+    document.getElementById('status').innerText = "引擎加载就绪，请选择图片";
+}
+
+// 4点点位排序：[TL, TR, BR, BL]
+function orderPoints(pts) {
+    let rect = [{}, {}, {}, {}];
+    let sums = pts.map(p => p.x + p.y);
+    let diffs = pts.map(p => p.y - p.x);
+
+    rect[0] = pts[sums.indexOf(Math.min(...sums))]; // TL
+    rect[2] = pts[sums.indexOf(Math.max(...sums))]; // BR
+    rect[1] = pts[diffs.indexOf(Math.min(...diffs))]; // TR
+    rect[3] = pts[diffs.indexOf(Math.max(...diffs))]; // BL
+    return rect;
+}
+
+// 核心处理函数
+function processImage(imgElement) {
+    let src = cv.imread(imgElement);
+    let gray = new cv.Mat();
+    let blurred = new cv.Mat();
+    let edges = new cv.Mat();
+    let closed = new cv.Mat();
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
+
+    // 预处理
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+    cv.Canny(blurred, edges, 50, 200);
+    let M = cv.Mat.ones(5, 5, cv.CV_8U);
+    cv.morphologyEx(edges, closed, cv.MORPH_CLOSE, M);
+    cv.findContours(closed, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+    let bestPts = null;
+    let imgArea = src.rows * src.cols;
+
+    // 找最大的 4 边形轮廓
+    for (let i = 0; i < contours.size(); ++i) {
+        let cnt = contours.get(i);
+        let area = cv.contourArea(cnt);
+        if (area < imgArea * 0.05) continue;
+
+        let peri = cv.arcLength(cnt, true);
+        let approx = new cv.Mat();
+        cv.approxPolyDP(cnt, 0.02 * peri, approx, true);
+
+        if (approx.rows === 4) {
+            let pts = [];
+            for (let j = 0; j < 4; j++) {
+                pts.push({ x: approx.data32S[j * 2], y: approx.data32S[j * 2 + 1] });
+            }
+            bestPts = orderPoints(pts);
+            approx.delete();
+            break;
+        }
+        approx.delete();
+    }
+
+    if (!bestPts) {
+        // 清理内存
+        src.delete(); gray.delete(); blurred.delete(); edges.delete(); closed.delete(); contours.delete(); hierarchy.delete(); M.delete();
+        return null;
+    }
+
+    // 计算透视变换目标分辨率
+    let wTop = Math.hypot(bestPts[1].x - bestPts[0].x, bestPts[1].y - bestPts[0].y);
+    let wBot = Math.hypot(bestPts[2].x - bestPts[3].x, bestPts[2].y - bestPts[3].y);
+    let targetW = Math.max(wTop, wBot);
+
+    let hLeft = Math.hypot(bestPts[3].x - bestPts[0].x, bestPts[3].y - bestPts[0].y);
+    let hRight = Math.hypot(bestPts[2].x - bestPts[1].x, bestPts[2].y - bestPts[1].y);
+    let targetH = Math.max(hLeft, hRight);
+
+    let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        bestPts[0].x, bestPts[0].y, bestPts[1].x, bestPts[1].y,
+        bestPts[2].x, bestPts[2].y, bestPts[3].x, bestPts[3].y
+    ]);
+    let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, targetW, 0, targetW, targetH, 0, targetH]);
+
+    let H = cv.getPerspectiveTransform(srcTri, dstTri);
+
+    // 计算整图外包框坐标 mapped 尺寸（防裁切）
+    let corners = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, src.cols, 0, src.cols, src.rows, 0, src.rows]);
+    let transformedCorners = new cv.Mat();
+    cv.perspectiveTransform(corners, transformedCorners, H);
+
+    let xs = [], ys = [];
+    for (let i = 0; i < 4; i++) {
+        xs.push(transformedCorners.data32F[i * 2]);
+        ys.push(transformedCorners.data32F[i * 2 + 1]);
+    }
+    let xMin = Math.min(...xs), xMax = Math.max(...xs);
+    let yMin = Math.min(...ys), yMax = Math.max(...ys);
+
+    let newW = Math.ceil(xMax - xMin);
+    let newH = Math.ceil(yMax - yMin);
+
+    let T = cv.matFromArray(3, 3, cv.CV_32FC1, [1, 0, -xMin, 0, 1, -yMin, 0, 0, 1]);
+    let HFinal = new cv.Mat();
+    cv.gemm(T, H, 1, new cv.Mat(), 0, HFinal);
+
+    let dst = new cv.Mat();
+    let dsize = new cv.Size(newW, newH);
+    cv.warpPerspective(src, dst, HFinal, dsize, cv.INTER_CUBIC, cv.BORDER_CONSTANT, new cv.Scalar(255, 255, 255, 255));
+
+    // 绘制到 Canvas
+    let canvas = document.createElement('canvas');
+    cv.imshow(canvas, dst);
+
+    // 释放内存
+    src.delete(); gray.delete(); blurred.delete(); edges.delete(); closed.delete(); contours.delete(); hierarchy.delete();
+    srcTri.delete(); dstTri.delete(); H.delete(); corners.delete(); transformedCorners.delete(); T.delete(); HFinal.delete(); dst.delete(); M.delete();
+
+    return canvas.toDataURL('image/jpeg');
+}
+
+async function handleFiles(files) {
+    if (!cvReady || files.length === 0) return;
+    
+    let status = document.getElementById('status');
+    let preview = document.getElementById('preview');
+    preview.innerHTML = '';
+    processedFiles = [];
+
+    for (let i = 0; i < files.length; i++) {
+        status.innerText = `处理中 (${i + 1}/${files.length})...`;
+        let file = files[i];
+        let imgUrl = URL.createObjectURL(file);
+        
+        let img = new Image();
+        img.src = imgUrl;
+        await new Promise(r => img.onload = r);
+
+        let resultDataUrl = processImage(img);
+        if (resultDataUrl) {
+            processedFiles.push({ name: `rectified_${file.name}`, data: resultDataUrl.split(',')[1] });
+            let resImg = document.createElement('img');
+            resImg.src = resultDataUrl;
+            preview.appendChild(resImg);
+        }
+    }
+
+    status.innerText = `处理完成！成功校正 ${processedFiles.length} 张图片。`;
+    if (processedFiles.length > 0) {
+        document.getElementById('downloadZipBtn').style.display = 'block';
+    }
+}
+
+function downloadZip() {
+    let zip = new JSZip();
+    processedFiles.forEach(f => zip.file(f.name, f.data, {base64: true}));
+    zip.generateAsync({type:"blob"}).then(content => {
+        saveAs(content, "ios_corrected_images.zip");
+    });
+}
+</script>
+</body>
+</html>
