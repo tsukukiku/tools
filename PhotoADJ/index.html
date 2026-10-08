@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'none'; img-src 'self' blob: data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>PicADJ · 本地批量图片校正</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar"><div class="wrap topinner"><strong>▣ PicADJ</strong><span>图片在您的浏览器内处理，不会上传到服务器</span><span id="engine" class="pill">正在加载图像引擎…</span></div></header>
+  <main class="wrap">
+    <section class="hero"><div><p class="eyebrow">LOCAL IMAGE WORKSPACE</p><h1>批量梯形校正</h1><p>自动识别画面中的四边形；不满意时选取四个角手动校正。最后一键打包下载。</p></div><div class="privacy">🔒 <b>本地处理</b><small>所选图片和校正结果仅保存在当前浏览器页面中。关闭或刷新页面后清除。</small></div></section>
+    <section class="panel pick"><div><h2>1 · 选择图片</h2><p>最多 50 张。支持常见的 JPEG、PNG、WebP、BMP 图片。</p></div><div class="pickactions"><label class="button primary">选择图片<input id="files" type="file" accept="image/*" multiple hidden></label><label class="button secondary">选择文件夹<input id="folder" type="file" accept="image/*" webkitdirectory multiple hidden></label></div></section>
+    <div id="status" class="status" role="status" aria-live="polite">图像引擎加载后即可选择图片。</div>
+    <section class="stats"><div><strong id="totalCount">0</strong><span>已选择</span></div><div><strong id="autoCount">0</strong><span>自动完成</span></div><div><strong id="manualCount">0</strong><span>待手动</span></div><div><strong id="savedCount">0</strong><span>手动完成</span></div></section>
+    <section class="panel"><div class="sectionhead"><div><h2>2 · 自动校正</h2><p>检查结果；如有偏差，可移到手动队列。</p></div></div><div id="gallery" class="gallery empty">选择图片后，自动校正结果会显示在这里。</div></section>
+    <section class="panel"><div class="sectionhead"><div><h2>3 · 手动校正</h2><p>依次点击画面四角。可撤销选点，或把坐标沿用到下一张同机位图片。</p></div><select id="manualSelect" aria-label="选择待手动校正图片"><option value="">暂无待处理图片</option></select></div><div class="editgrid"><div><div class="canvasbox"><canvas id="sourceCanvas" aria-label="点击图片依次标记四角"></canvas><span id="sourcePlaceholder">选择待处理图片后在此标记四角</span></div><p id="pointInfo" class="hint">已选 0 / 4 点</p></div><div><div class="canvasbox"><canvas id="resultCanvas" aria-label="校正结果预览"></canvas><span id="resultPlaceholder">校正预览</span></div><p class="hint">导出时使用原图分辨率</p></div></div><div class="actions"><button id="undo" class="button secondary" disabled>撤销一点</button><button id="process" class="button primary" disabled>处理当前图片</button><button id="save" class="button secondary" disabled>保存当前图片</button><button id="next" class="button secondary" disabled>保存并沿用坐标处理下一张</button></div></section>
+    <section class="panel export"><div><h2>4 · 导出结果</h2><p>自动完成和已保存的手动结果将合并为 ZIP 文件。</p></div><button id="export" class="button primary" disabled>下载全部结果 ZIP</button></section>
+  </main>
+  <script src="jszip.min.js"></script>
+  <script src="main.js" defer></script>
+</body>
+</html>
