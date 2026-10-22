@@ -127,5 +127,6 @@
     fieldTab.addEventListener('click',()=>{view='field';fieldTab.classList.add('active');lengthTab.classList.remove('active');draw();});lengthTab.addEventListener('click',()=>{view='length';lengthTab.classList.add('active');fieldTab.classList.remove('active');draw();});
     captureCenters();if(playing){playButton.textContent='暂停动画';animationFrame=requestAnimationFrame(animate);}else{playButton.textContent='播放动画';playButton.classList.remove('active');playButton.setAttribute('aria-pressed','false');draw();}
   </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"0829df47503149ad899f4819cade6d5e","r":1,"spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
