@@ -9,7 +9,7 @@
 - 全球地震：USGS 最近 24 小时 M2.5+ GeoJSON。
 - 页面可见且在线时每 60 秒刷新；后台标签暂停。失败时仅保留本次页面会话中最后一次成功的数据并标出连接失败，不生成模拟事件。
 - 地图和列表按发生时间从新到旧共用编号 A–Z、A1–Z1、A2……；切换区域或震级筛选后重新编号。无有效震中坐标的事件只在列表显示。
-- 地图按需加载 Leaflet 脚本；Leaflet 定位样式已放进项目文件并在页面打开时加载，确保点位与国界使用同一地图坐标系。底图是项目自带的 Natural Earth 1:110m 简化国界，不请求地图瓦片。因此直接打开本地 HTML 时也不会触发 OSM 瓦片 403。此底图没有街道或日本行政区细节。
+- 地图按需加载 Leaflet 脚本；Leaflet 定位样式直接写入 `index.html`，避免独立样式文件未加载时点位和缩放按钮跑出地图框。底图是项目自带的 Natural Earth 1:110m 简化国界，不请求地图瓦片。因此直接打开本地 HTML 时也不会触发 OSM 瓦片 403。此底图没有街道或日本行政区细节。
 
 ## 发布前
 
@@ -19,4 +19,4 @@
 
 数据并非灾害预警的唯一依据。正式发布前应持续遵守 [P2PQuake API 条款](https://www.p2pquake.net/develop/json_api_v2/)与 [USGS 数据说明](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php)。底图来自 [Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/) 的公开领域地图数据。
 
-Leaflet 1.9.4 的 `leaflet.css` 来自 [Leaflet 官方仓库](https://github.com/Leaflet/Leaflet/tree/v1.9.4/dist)，许可见 `LEAFLET-LICENSE.txt`。
+内嵌的 Leaflet 1.9.4 CSS 来自 [Leaflet 官方仓库](https://github.com/Leaflet/Leaflet/tree/v1.9.4/dist)，许可见 `LEAFLET-LICENSE.txt`。`leaflet.css` 仍保留为可核对的原始文件。
