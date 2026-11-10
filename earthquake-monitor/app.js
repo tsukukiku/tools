@@ -150,9 +150,9 @@
   }
   function loadLeaflet() {
     if (window.L) return Promise.resolve();
-    return new Promise((resolve,reject)=>{
-      const css=document.createElement('link'); css.rel='stylesheet'; css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; css.integrity='sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoakfnl3pq3M5w='; css.crossOrigin='anonymous'; document.head.append(css);
-      const script=document.createElement('script'); script.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; script.integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='; script.crossOrigin='anonymous'; script.onload=resolve; script.onerror=()=>reject(new Error('Leaflet unavailable')); document.head.append(script);
+    return loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',script=>{
+      script.integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+      script.crossOrigin='anonymous';
     });
   }
   async function toggleMap() {
