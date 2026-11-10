@@ -2,8 +2,11 @@
 :root .mag-badge{display:flex;flex-direction:column;justify-content:center;gap:1px}
 .mag-badge .event-code{font-size:17px;line-height:1}
 .mag-badge small{font-size:10px;font-weight:700;line-height:1.2}
-.map-pin{display:grid;place-items:center;border-radius:50%;background:#3a9e95;color:#fff;font-size:11px;font-weight:800;border:2px solid #d5fff5;box-shadow:0 2px 8px #0009;white-space:nowrap}
-.map-pin.strong{background:#bf7d37;border-color:#ffe0a1}
-.map-pin.major{background:#c34f57;border-color:#ffd0d0}
+.map-marker{background:none;border:0;overflow:visible;text-align:center;white-space:nowrap}
+.map-marker .map-magnitude{position:absolute;left:50%;top:0;transform:translateX(-50%);padding:1px 3px;border-radius:3px;background:#102236e8;color:#fff;font-size:10px;font-weight:800;line-height:15px;box-shadow:0 1px 4px #0008}
+.map-marker .map-pin{position:absolute;left:50%;top:22.5px;transform:translateX(-50%);display:grid;place-items:center;width:15px;height:15px;border-radius:50%;background:#3a9e95;color:#fff;font-size:8px;font-weight:800;line-height:1;border:1px solid #d5fff5;box-shadow:0 2px 5px #0009}
+.map-marker.strong .map-pin{background:#bf7d37;border-color:#ffe0a1}
+.map-marker.major .map-pin{background:#c34f57;border-color:#ffd0d0}
 .leaflet-container{position:relative;overflow:hidden}
 .leaflet-pane,.leaflet-marker-icon,.leaflet-overlay-pane{position:absolute;left:0;top:0}
+
