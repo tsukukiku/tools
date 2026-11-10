@@ -176,7 +176,16 @@
     for(const [index,item] of items.slice(0,100).entries()) {
       if(item.lat===null) continue;
       const label=eventLabel(index), level=item.mag>=6?'major':item.mag>=4.5?'strong':'regular';
-      const marker=L.marker([item.lat,item.lon],{title:`${label} ${item.place}`,icon:L.divIcon({className:`map-pin ${level}`,html:label,iconSize:[30,30],iconAnchor:[15,15]})});
+      const magnitude=item.mag===null?'M --':`M ${item.mag.toFixed(1)}`;
+      const marker=L.marker([item.lat,item.lon],{
+        title:`${label} ${magnitude} ${item.place}`,
+        icon:L.divIcon({
+          className:`map-marker ${level}`,
+          html:`<span class="map-magnitude">${magnitude}</span><span class="map-pin">${label}</span>`,
+          iconSize:[44,38],
+          iconAnchor:[22,30]
+        })
+      });
       const popup=document.createElement('div'); popup.append(text('strong',`${label} · ${item.place}`),document.createElement('br'),text('span',`${item.mag===null?'M 未提供':`M ${item.mag.toFixed(1)}`} · ${formatJst(item.time)} JST${item.source==='japan'?` · 最大震度 ${item.scale}`:''}`));
       marker.bindPopup(popup); marker.addTo(state.markers);
     }
@@ -201,3 +210,4 @@
   setInterval(refresh,REFRESH_MS);
   render(); refresh();
 })();
+
