@@ -160,7 +160,7 @@
     if(!wrap.hidden){wrap.hidden=true;button.setAttribute('aria-expanded','false');button.firstChild.textContent='查看地图 ';return;}
     wrap.hidden=false; button.setAttribute('aria-expanded','true'); button.firstChild.textContent='收起地图 ';
     try {
-      await Promise.all([loadLeaflet(),window.MAP_COUNTRIES ? Promise.resolve() : loadScript('./basemap.js')]);
+      await Promise.all([loadLeaflet(),window.MAP_COUNTRIES ? Promise.resolve() : loadScript('./basemap.js?v=20261111-1')]);
       if(!state.map) {
         state.map=L.map('map',{preferCanvas:true,zoomControl:false,worldCopyJump:true,zoomSnap:1,attributionControl:false,minZoom:2,maxZoom:9}).setView(state.mode==='japan'?[36.5,138]:[20,10],state.mode==='japan'?5:2);
         L.control.zoom({position:'bottomright'}).addTo(state.map);
